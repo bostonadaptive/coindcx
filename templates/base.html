@@ -1,0 +1,10 @@
+<ul class="sidebar-nav">
+  <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+
+  {% if session.get("role") == "admin" %}
+    <li><a href="{{ url_for('manage_strategies') }}">Admin Panel</a></li>
+  {% elif session.get("role") == "moderator" %}
+    <li><a href="{{ url_for('moderator_trades') }}">Affiliate Trades</a></li>
+    <li><a href="{{ url_for('moderator_earnings') }}">My Earnings</a></li>
+  {% endif %}
+</ul>

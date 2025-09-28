@@ -1,0 +1,40 @@
+{% extends "base_app.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>User Management</h2>
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.role.name }}</td>
+                <td>
+                    <!-- Role Change Buttons -->
+                    {% for role in roles %}
+                        {% if user.role_id != role.id %}
+                        <form action="{{ url_for('set_user_role', id=user.id, role_name=role.name) }}" method="POST" style="display:inline;">
+                            <button class="btn btn-sm btn-info" type="submit">Set {{ role.name }}</button>
+                        </form>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Delete User -->
+                    <form action="{{ url_for('delete_user', id=user.id) }}" method="POST" style="display:inline;">
+                        <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

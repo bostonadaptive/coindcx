@@ -1,0 +1,831 @@
+{% extends "base_app.html" %}
+{% block title %}Backtester{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Home</a></li>
+<li class="breadcrumb-item active" aria-current="page">Backtester</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <h3 class="fw-bold mb-0">Backtester</h3>
+      <small class="text-muted">Backtest your strategies and see how they would have performed in the past.</small>
+    </div>
+
+    <div class="btn-group" role="group" aria-label="View">
+      <a href="#" id="btnSymbols" class="btn btn-outline-secondary active">Symbols</a>
+      <a href="#" id="btnResults" class="btn btn-outline-secondary">Results</a>
+    </div>
+  </div>
+
+  <!-- ================= SYMBOLS VIEW ================= -->
+  <div id="symbolsView">
+    <div class="row g-3 mb-4">
+      <div class="col-md-3"><div class="card shadow-sm p-3 text-center"><h6 class="text-muted">Total Strategies</h6><h4 class="text-primary">{{ stats.total }}</h4></div></div>
+      <div class="col-md-3"><div class="card shadow-sm p-3 text-center"><h6 class="text-muted">Active</h6><h4 class="text-success">{{ stats.active }}</h4></div></div>
+      <div class="col-md-3"><div class="card shadow-sm p-3 text-center"><h6 class="text-muted">Profitable</h6><h4 class="text-info">{{ stats.profitable }}</h4></div></div>
+      <div class="col-md-3"><div class="card shadow-sm p-3 text-center"><h6 class="text-muted">This Month</h6><h4 class="text-warning">{{ stats.this_month }}</h4></div></div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div></div>
+      <button class="btn btn-orange" data-bs-toggle="modal" data-bs-target="#addStrategyModal">
+        <i class="bi bi-plus"></i> Add Strategy
+      </button>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Strategy</th>
+              <th>Symbol</th>
+              <th>Date Range</th>
+              <th>Timeframe</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for cfg, last in strategies %}
+            <tr>
+              <td>{{ cfg.strategy_name }}</td>
+              <td>{{ cfg.symbol_tv|coindcx_pair }}</td>
+              <td>{{ cfg.start_date.strftime('%d %b %Y') }} - {{ cfg.end_date.strftime('%d %b %Y') }}</td>
+              <td>{{ cfg.timeframe }}</td>
+              <td class="text-end">
+                <button class="btn btn-outline-primary btn-sm me-1"
+                        onclick="openResults({{ cfg.id }}, '{{ cfg.strategy_name|e }}', '{{ cfg.symbol_tv|e }}', '{{ cfg.timeframe|e }}')"
+                        title="Run"><i class="bi bi-play"></i></button>
+
+                <button class="btn btn-outline-secondary btn-sm me-1" title="Edit"
+                        data-bs-toggle="modal" data-bs-target="#editStrategyModal{{ cfg.id }}">
+                  <i class="bi bi-pencil"></i>
+                </button>
+
+                <!-- Add "+" Button to Copy Strategy -->
+                <button class="btn btn-outline-success btn-sm me-1" title="Copy Strategy" data-id="{{ cfg.id }}">
+                  <i class="bi bi-plus"></i>
+                </button>
+
+                <form class="d-inline" method="post" action="{{ url_for('delete_backtest_strategy', config_id=cfg.id) }}" onsubmit="return confirm('Delete this strategy?');">
+                  <button class="btn btn-outline-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+
+            <!-- Edit Modal -->
+            <div class="modal fade" id="editStrategyModal{{ cfg.id }}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <form method="post" action="{{ url_for('edit_backtest_strategy', config_id=cfg.id) }}">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Edit Strategy</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                      <div class="mb-2">
+                        <label class="form-label">Strategy</label>
+                        <select name="strategy_name" class="form-select" required>
+                        {% for s in all_strategies %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                      <div class="mb-2">
+                        <label class="form-label">Symbol</label>
+                        <select class="form-select symbol-select" name="symbol_tv" data-selected="{{ cfg.symbol_tv }}"></select>
+                      </div>
+                      <div class="row g-2">
+                        <div class="col-md-6">
+                          <label class="form-label">Amount (INR)</label>
+                          <input class="form-control" type="number" step="0.01" name="amount" value="{{ cfg.margin_in_inr }}">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label">Leverage</label>
+                          <input class="form-control" type="number" name="leverage" value="{{ cfg.leverage }}">
+                        </div>
+                      </div>
+                      <div class="row g-2 mt-2">
+                        <div class="col-md-6">
+                          <label class="form-label">From</label>
+                          <input type="date" class="form-control" name="start_date" value="{{ cfg.start_date }}">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label">To</label>
+                          <input type="date" class="form-control" name="end_date" value="{{ cfg.end_date }}">
+                        </div>
+                      </div>
+                      <div class="mt-2">
+                        <label class="form-label">Timeframe</label>
+                        <select class="form-select" name="timeframe">
+                            <option value="Auto" {% if cfg.timeframe == "Auto" %}selected{% endif %}>Auto</option>
+                            {% for val,label in form.timeframe.choices %}
+                            <option value="{{ val }}" {% if cfg.timeframe==val %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                      <button type="submit" class="btn btn-orange">Save</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No strategies yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container for success message -->
+  <div class="toast-container position-fixed top-0 end-0 p-3">
+    <div id="copyToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          Strategy copied successfully!
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= RESULTS VIEW ================= -->
+  <div id="resultsView" class="d-none">
+    <div class="d-flex align-items-center mb-3">
+      <h5 class="me-3 mb-0"><span id="resTitle">Results</span></h5>
+      <span class="badge bg-light text-dark" id="resMeta"></span>
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabOverview">Overview</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTrades">Trades</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAnalytics">Analytics</button></li>
+    </ul>
+
+    <div class="tab-content">
+
+      <!-- Overview -->
+      <div class="tab-pane fade show active" id="tabOverview">
+        <div class="row g-3 mb-3">
+          <div class="col-md-3"><div class="card p-3"><div class="text-muted">Win Rate</div><div class="fs-4 text-success" id="cardWinRate">-</div><small class="text-muted" id="cardWinLoss">-</small></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="text-muted">Net Profit</div><div class="fs-4" id="cardNetProfit">-</div><small class="text-muted">Total trades: <span id="cardTrades">-</span></small></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="text-muted">Profit Factor</div><div class="fs-4" id="cardPF">-</div><small class="text-muted">Gross profit / Gross loss</small></div></div>
+          <div class="col-md-3">
+            <div class="card p-3">
+                <div class="text-muted">Max Drawdown</div>
+                <div class="fs-4 text-danger" id="cardDD">-</div>
+                <small class="text-muted">Sharpe Ratio: <span id="cardSharpe">-</span></small>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-3"><div class="card p-3"><div class="text-muted">Trading Days</div><div class="fs-4" id="cardDays">-</div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="text-muted">Profitable Days</div><div class="fs-4 text-success" id="cardGood">-</div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="text-muted">Loss Days</div><div class="fs-4 text-danger" id="cardBad">-</div></div></div>
+          <div class="col-md-3"><div class="card p-3"><div class="text-muted">Avg Daily P&L</div><div class="fs-4" id="cardAvg">-</div></div></div>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Portfolio Equity Curve</span>
+            <div>
+              <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('D')">Daily</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('W')">Weekly</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('M')">Monthly</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('1M')">1M</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('3M')">3M</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('6M')">6M</button>
+              <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('1Y')">1Y</button>
+            </div>
+          </div>
+
+          <div class="card-body"><canvas id="equityChart" height="96"></canvas></div>
+        </div>
+
+        <!-- Monthly & Daily PnL -->
+        <div class="card mb-3">
+          <div class="card-header">Monthly Profit Breakdown</div>
+          <div class="card-body">
+            <table class="table table-bordered text-center" id="monthlyTbl">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th>
+                  <th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Daily -->
+        <div class="card mb-3">
+          <div class="card-header">Daily P&L Performance</div>
+          <div class="card-body"><canvas id="dailyBar" height="96"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Trades -->
+      <div class="tab-pane fade" id="tabTrades">
+        <div class="row g-3 mb-3">
+          <div class="col-lg-6">
+            <div class="card"><div class="card-header">Performance Metrics</div>
+              <div class="card-body">
+                <div class="row row-cols-1 gy-2">
+                  <div class="col d-flex justify-content-between"><span>Total Trades</span><strong id="mTotal">-</strong></div>
+                  <div class="col d-flex justify-content-between"><span>Win Rate</span><strong id="mWR">-</strong></div>
+                  <div class="col d-flex justify-content-between"><span>Profit Factor</span><strong id="mPF">-</strong></div>
+                  <div class="col d-flex justify-content-between"><span>Sharpe Ratio</span><strong id="mSharpe">—</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="card"><div class="card-header">Profit/Loss</div>
+              <div class="card-body">
+                <div class="row row-cols-1 gy-2">
+                  <div class="col d-flex justify-content-between"><span>Net Profit</span><strong id="mNP">-</strong></div>
+                  <div class="col d-flex justify-content-between"><span>Max Drawdown</span><strong id="mDD">-</strong></div>
+                  <div class="col d-flex justify-content-between"><span>Winning Trades</span><strong id="mWins">-</strong></div>
+                  <div class="col d-flex justify-content-between"><span>Losing Trades</span><strong id="mLosses">-</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Trade List</div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-sm mb-0" id="tradesTbl">
+                <thead class="table-light">
+                  <tr>
+                    <th>Type</th><th>Entry Time</th><th>Entry Price</th>
+                    <th>Exit Time</th><th>Exit Price</th><th>Quantity</th><th>P&L (₹)</th><th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size: smaller";></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analytics -->
+      <div class="tab-pane fade" id="tabAnalytics">
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="card">
+              <div class="card-header">PnL Distribution</div>
+              <div class="card-body"><canvas id="pnlHist" height="96"></canvas></div>
+            </div>
+          </div>
+          <div class="col-lg-6">
+            <div class="card">
+              <div class="card-header">Holding Time Distribution (hours)</div>
+              <div class="card-body"><canvas id="holdHist" height="96"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add Strategy Modal -->
+<div class="modal fade" id="addStrategyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('add_backtest_strategy') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Create New Strategy</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            <label class="form-label">Strategy</label>
+            <select name="strategy_name" class="form-select" required>
+              {% for s in all_strategies %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3 position-relative">
+            <label class="form-label">Strategy Symbol</label>
+            <input class="form-control" id="symbolSearchInput" name="symbol_tv" autocomplete="off" placeholder="Start typing (e.g., BTCUSDT)" required>
+            <ul class="list-group position-absolute w-100 mt-1" id="symbolSuggestions" style="z-index: 1050;"></ul>
+          </div>
+
+          <div class="mb-3">
+            {{ form.amount.label }}
+            {{ form.amount(class="form-control", placeholder="e.g., 1000.50") }}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label d-flex justify-content-between"><span>Leverage</span><span id="levVal">0%</span></label>
+            <input type="range" class="form-range" min="0" max="125" step="5" value="0"
+                   id="leverageRange" oninput="levVal.innerText=this.value+'%'; document.getElementById('levHidden').value=this.value;">
+            <input type="hidden" id="levHidden" name="leverage" value="0">
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              {{ form.start_date.label }} {{ form.start_date(class="form-control", type="date") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.end_date.label }} {{ form.end_date(class="form-control", type="date") }}
+            </div>
+          </div>
+
+          <div class="mb-1">
+            <div class="mb-1">
+            {{ form.timeframe.label }}
+            <select name="timeframe" class="form-select">
+                <option value="Auto">Auto</option>
+                {% for val, label in form.timeframe.choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            </div>
+
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-orange">Create Strategy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Running modal -->
+<div class="modal fade" id="runModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body d-flex align-items-center">
+        <div class="spinner-border me-3" role="status" aria-hidden="true"></div>
+        <div>
+          <div class="fw-bold">Running backtest…</div>
+          <small class="text-muted">Fetching candles, applying indicators, generating trades.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- libs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+.btn-orange{background:#ff6600;color:#fff}.btn-orange:hover{background:#e65c00;color:#fff}
+#resultsView .card .fs-4{font-weight:700}
+.negative{color:#dc3545!important}.positive{color:#198754!important}
+</style>
+
+<script>
+let equityChart, dailyBarChart, pnlHistChart, holdHistChart, fullEquityData=[];
+
+function fmtINRPlain(n){
+  return '₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(Number(n||0));
+}
+function getPnlInrValue(p){
+  if(!p) return 0;
+  if(typeof p.pnl_inr_value !== 'undefined' && p.pnl_inr_value!==null) return Number(p.pnl_inr_value)||0;
+  if(typeof p.pnl_inr !== 'undefined' && p.pnl_inr!==null){
+    const v = Number(p.pnl_inr);
+    if(!Number.isNaN(v)) return v;
+    const m = (''+p.pnl_inr).replace(/[^0-9\.-]/g,'');
+    const mv = Number(m);
+    if(!Number.isNaN(mv)) return mv;
+  }
+  if(typeof p.pnl_usdt !== 'undefined' && window._fx_usdt_inr) return Number(p.pnl_usdt||0) * Number(window._fx_usdt_inr||0);
+  return 0;
+}
+function setPosNeg(el,num){
+  el.classList.remove('positive','negative');
+  el.classList.add(Number(num)<0?'negative':'positive');
+}
+function dtFromEpoch(ts){
+  const n=Number(ts||0);
+  const ms=(n>1e12)?n:n*1000;
+  return new Date(ms).toLocaleString();
+}
+
+function loadSymbols(sel,selectedVal=null){
+  fetch('{{ url_for("fetch_instruments") }}')
+    .then(r=>r.json())
+    .then(items=>{
+      if(!Array.isArray(items))return;
+      sel.innerHTML='';
+      items.forEach(x=>{
+        const opt=document.createElement('option');
+        opt.value=x.symbol;
+        opt.textContent=x.name;
+        if(selectedVal&&x.symbol===selectedVal)opt.selected=true;
+        sel.appendChild(opt);
+      });
+    }).catch(()=>{});
+}
+
+function showSymbols(){
+  document.getElementById('symbolsView').classList.remove('d-none');
+  document.getElementById('resultsView').classList.add('d-none');
+  document.getElementById('btnSymbols').classList.add('active');
+  document.getElementById('btnResults').classList.remove('active');
+}
+function showResultsView(){
+  document.getElementById('symbolsView').classList.add('d-none');
+  document.getElementById('resultsView').classList.remove('d-none');
+  document.getElementById('btnResults').classList.add('active');
+  document.getElementById('btnSymbols').classList.remove('active');
+}
+
+async function openResults(cfgId,name,sym,tf){
+  showResultsView();
+  document.getElementById('resTitle').innerText=`${name}`;
+  document.getElementById('resMeta').innerText=`${sym} • ${tf}`;
+
+  runModal=new bootstrap.Modal(document.getElementById('runModal'));
+  runModal.show();
+  try{
+    const res=await fetch(`/api/backtest/${cfgId}`,{method:'POST'});
+    if(!res.ok)throw new Error('Server responded '+res.status);
+    const js=await res.json();
+    renderResults(js);
+  }catch(err){
+    console.error('Error:',err);
+    alert('Backtest failed. See console for details.');
+  }finally{
+    runModal.hide();
+  }
+}
+
+function ensureMonthly12(monthlyObj){
+  const out={};
+  const today=new Date();
+  for(let i=11;i>=0;i--){
+    const d=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth()-i,1));
+    const ym=d.toISOString().slice(0,7);
+    out[ym]=0;
+  }
+  Object.entries(monthlyObj||{}).forEach(([k,v])=>{
+    if(out.hasOwnProperty(k))out[k]+=Number(v||0);
+  });
+  return out;
+}
+
+function computeFromDaily(daily){
+  const days=Object.keys(daily||{}).sort();
+  let tradingDays=0,good=0,bad=0,avg=0;
+  let cum=0,maxPeak=0,maxDD=0;
+  const equity=[];
+  days.forEach(d=>{
+    tradingDays++;
+    const pnl=Number(daily[d]||0);
+    if(pnl>0)good++;if(pnl<0)bad++;
+    avg+=pnl;cum+=pnl;
+    equity.push({date:d,equity:Math.round((cum+Number.EPSILON)*100)/100});
+    maxPeak=Math.max(maxPeak,cum);
+    maxDD=Math.max(maxDD,maxPeak-cum);
+  });
+  avg=tradingDays?(avg/tradingDays):0;
+  return{tradingDays,good,bad,avg,equity,maxDD};
+}
+
+/*function computeSharpe(daily){
+  const vals = Object.values(daily || {}).map(Number);
+  if (vals.length < 2) return 0;
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  const variance = vals.reduce((a,b)=>a+Math.pow(b-avg,2),0) / (vals.length-1);
+  const stddev = Math.sqrt(variance);
+  return stddev ? (avg/stddev) : 0;
+}*/
+
+function computeSharpe(daily){
+  const vals = Object.values(daily || {}).map(Number);
+  if (vals.length < 2) return 0;
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  const variance = vals.reduce((a,b)=>a+Math.pow(b-avg,2),0) / (vals.length-1);
+  const stddev = Math.sqrt(variance);
+  const dailySharpe = stddev ? (avg/stddev) : 0;
+  return dailySharpe * Math.sqrt(252); // annualized Sharpe
+}
+
+
+function updateEquityView(range){
+  if(!fullEquityData.length)return;
+  let data=fullEquityData;
+  const now=new Date(),cutoff=new Date();
+  if(range==='1M')cutoff.setMonth(now.getMonth()-1);
+  if(range==='3M')cutoff.setMonth(now.getMonth()-3);
+  if(range==='6M')cutoff.setMonth(now.getMonth()-6);
+  if(range==='1Y')cutoff.setFullYear(now.getFullYear()-1);
+  if(['1M','3M','6M','1Y'].includes(range))data=data.filter(d=>d.date>=cutoff);
+
+  const labels=data.map(d=>d.date.toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  const values=data.map(d=>d.equity);
+  if(equityChart)equityChart.destroy();
+  equityChart=new Chart(document.getElementById('equityChart'),{
+    type:'line',
+    data:{labels,datasets:[{data:values,fill:true,tension:0.25,label:'Equity (₹)'}]},
+    options:{plugins:{legend:{display:false}}}
+  });
+}
+
+function renderResults(js){
+  // ---- metrics (with fallbacks) ----
+  let m=js.metrics||{};
+  let daily=js.daily||{};
+  let monthly12=ensureMonthly12(js.monthly||{});
+  const sharpe = computeSharpe(daily);
+
+  if((!daily||Object.keys(daily).length===0)&&Array.isArray(js.trades)){
+    daily={};
+    js.trades.forEach(t=>{
+      const d=new Date(((t.exit_ts||t.entry_ts)>1e12?(t.exit_ts||t.entry_ts):(t.exit_ts||t.entry_ts)*1000)).toISOString().slice(0,10);
+      daily[d]=(daily[d]||0)+Number(getPnlInrValue(t)||0);
+    });
+  }
+  const computed=computeFromDaily(daily);
+  if(!Array.isArray(js.equity)||js.equity.length===0)js.equity=computed.equity;
+  if(!m.trading_days)m.trading_days=computed.tradingDays;
+  if(!m.profitable_days)m.profitable_days=computed.good;
+  if(!m.loss_days)m.loss_days=computed.bad;
+  if(!m.avg_daily_pnl)m.avg_daily_pnl=Math.round((computed.avg+Number.EPSILON)*100)/100;
+  if(!m.max_drawdown)m.max_drawdown=Math.round((computed.maxDD+Number.EPSILON)*100)/100;
+
+  // ---- cards ----
+  document.getElementById('cardWinRate').innerText=(m.win_rate??0).toFixed(2)+'%';
+  const netEl=document.getElementById('cardNetProfit');
+  netEl.innerText=fmtINRPlain(m.net_profit??0);setPosNeg(netEl,m.net_profit??0);
+  document.getElementById('cardPF').innerText=(m.profit_factor??0).toString();
+  document.getElementById('cardDD').innerText=fmtINRPlain(m.max_drawdown??0);
+  document.getElementById('cardSharpe').innerText = sharpe.toFixed(2);
+  document.getElementById('mSharpe').innerText = sharpe.toFixed(2);
+  document.getElementById('cardTrades').innerText=(m.total_trades??(js.trades||[]).length);
+  document.getElementById('cardDays').innerText=(m.trading_days??0);
+  document.getElementById('cardGood').innerText=(m.profitable_days??0);
+  document.getElementById('cardBad').innerText=(m.loss_days??0);
+  //document.getElementById('cardAvg').innerText=fmtINRPlain(m.avg_daily_pnl??0);
+  document.getElementById('cardWinLoss').innerText=`${m.wins??0} wins / ${m.losses??0} losses`;
+
+  const avgEl = document.getElementById('cardAvg');
+    avgEl.innerText = fmtINRPlain(m.avg_daily_pnl ?? 0);
+
+    // reset classes
+    avgEl.classList.remove('text-success','text-danger');
+
+    // apply color rules
+    if ((m.avg_daily_pnl ?? 0) > 0) avgEl.classList.add('text-success');
+    else if ((m.avg_daily_pnl ?? 0) < 0) avgEl.classList.add('text-danger');
+    // if 0 → no class → black font
+
+
+  // ---- metrics panel ----
+  document.getElementById('mTotal').innerText=m.total_trades??(js.trades||[]).length;
+  document.getElementById('mWR').innerText=(m.win_rate??0).toFixed(2)+'%';
+  document.getElementById('mPF').innerText=(m.profit_factor??0).toString();
+  const npEl=document.getElementById('mNP');npEl.innerText=fmtINRPlain(m.net_profit??0);setPosNeg(npEl,m.net_profit??0);
+  document.getElementById('mDD').innerText=fmtINRPlain(m.max_drawdown??0);
+  document.getElementById('mWins').innerText=m.wins??0;
+  document.getElementById('mLosses').innerText=m.losses??0;
+
+  // ---- Equity chart ----
+  fullEquityData=(js.equity||[]).map(x=>({date:new Date(x.date),equity:x.equity}));
+  updateEquityView('ALL');
+
+    // ---- Monthly table (proper breakdown by year & months) ----
+    const tbody = document.querySelector('#monthlyTbl tbody');
+    tbody.innerHTML = '';
+
+    const monthlyGrouped = {};
+    Object.entries(daily || {}).forEach(([date, pnl]) => {
+    const [y, m] = date.split('-'); // date is YYYY-MM-DD
+    if (!monthlyGrouped[y]) monthlyGrouped[y] = Array(12).fill(0);
+    monthlyGrouped[y][parseInt(m, 10) - 1] += Number(pnl || 0);
+    });
+
+    Object.keys(monthlyGrouped).sort().forEach(y => {
+    const arr = monthlyGrouped[y];
+    const tot = arr.reduce((a, b) => a + b, 0);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+        `<td>${y}</td>` +
+        arr
+            .map(v => {
+            let cls = '';
+            if (v > 0) cls = 'text-success';
+            else if (v < 0) cls = 'text-danger';
+            // if v === 0 → leave cls empty (default black)
+            return `<td class="text-end ${cls}">${fmtINRPlain(v)}</td>`;
+            })
+            .join('') +
+        (() => {
+            let totCls = '';
+            if (tot > 0) totCls = 'text-success';
+            else if (tot < 0) totCls = 'text-danger';
+            return `<td class="text-end ${totCls}">${fmtINRPlain(tot)}</td>`;
+        })();
+
+
+    tbody.appendChild(tr);
+    });
+
+
+  // ---- Daily bar ----
+    const days = Object.keys(daily || {}).sort();
+    const vals = days.map(d => Number(daily[d] || 0));
+    const colors = vals.map(v => v >= 0 ? 'rgba(25,135,84,0.8)' : 'rgba(220,53,69,0.8)');
+
+    if (dailyBarChart) dailyBarChart.destroy();
+    dailyBarChart = new Chart(document.getElementById('dailyBar'), {
+    type: 'bar',
+    data: {
+        labels: days,
+        datasets: [{
+        label: 'Daily P&L (₹)',
+        data: vals,
+        backgroundColor: colors
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { maxRotation: 0 } } }
+    }
+    });
+
+
+  // ---- Trades table ----
+const tBody = document.querySelector('#tradesTbl tbody');
+tBody.innerHTML = '';
+
+// Reverse the trades to show latest on top
+(js.trades || []).reverse().forEach(tr => {
+    const pnlVal = Number(getPnlInrValue(tr)||0);
+    const cls = (pnlVal >= 0) ? 'text-success' : 'text-danger';
+    const side = (tr.side || 'LONG').toUpperCase();
+    const badge = side === 'SHORT' ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success';
+    const trEl = document.createElement('tr');
+    trEl.innerHTML = `
+      <td><span class="badge ${badge}">${side}</span></td>
+      <td>${dtFromEpoch(tr.entry_ts)}</td>
+      <td>₹${Number(tr.entry_price).toFixed(2)}</td>
+      <td>${dtFromEpoch(tr.exit_ts)}</td>
+      <td>₹${Number(tr.exit_price).toFixed(2)}</td>
+      <td>${Number(tr.qty).toFixed(6)}</td>
+      <td class="${cls}">${fmtINRPlain(pnlVal)}</td>
+      <td>${tr.reason}</td>`;
+    tBody.appendChild(trEl);
+});
+
+  // ---- Analytics histograms ----
+  const pnls=(js.trades||[]).map(t=>Number(getPnlInrValue(t)||0));
+  const holdsHours=(js.trades||[]).map(t=>{
+    const a=Number(t.entry_ts||0),b=Number(t.exit_ts||0);
+    const ms=((b>1e12?b:b*1000)-(a>1e12?a:a*1000));
+    return ms>0?(ms/3600000):0;
+  });
+
+  function makeBins(arr,binSize){
+    if(arr.length===0)return{labels:[],data:[]};
+    const min=Math.min(...arr),max=Math.max(...arr);
+    const bins=Math.max(5,Math.min(20,Math.ceil((max-min)/binSize)));
+    const edges=Array.from({length:bins+1},(_,i)=>min+i*binSize);
+    const counts=Array(bins).fill(0);
+    arr.forEach(v=>{
+      let idx=Math.min(bins-1,Math.max(0,Math.floor((v-min)/binSize)));
+      counts[idx]+=1;
+    });
+    const labels=counts.map((_,i)=>`${(edges[i]).toFixed(0)}→${(edges[i+1]).toFixed(0)}`);
+    return{labels,data:counts};
+  }
+
+  const pnlBins=makeBins(pnls,Math.max(100,Math.ceil((Math.max(...pnls,0)-Math.min(...pnls,0))/10)));
+  if(pnlHistChart)pnlHistChart.destroy();
+  pnlHistChart=new Chart(document.getElementById('pnlHist'),{
+    type:'bar',
+    data:{labels:pnlBins.labels,datasets:[{label:'Trades count',data:pnlBins.data}]},
+    options:{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:0}}}}
+  });
+
+  const holdBins=makeBins(holdsHours,Math.max(0.5,(Math.max(...holdsHours,0)-Math.min(...holdsHours,0))/10));
+  if(holdHistChart)holdHistChart.destroy();
+  holdHistChart=new Chart(document.getElementById('holdHist'),{
+    type:'bar',
+    data:{labels:holdBins.labels,datasets:[{label:'Trades count',data:holdBins.data}]},
+    options:{plugins:{legend:{display:false}},scales:{x:{ticks:{maxRotation:0}}}}
+  });
+}
+
+document.querySelectorAll('.btn-outline-success[data-id]').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const strategyId = this.dataset.id;
+
+      fetch(`/copy_strategy/${strategyId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ strategy_id: strategyId })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const toast = new bootstrap.Toast(document.getElementById('copyToast'));
+          toast.show();
+        } else {
+          alert('Error copying strategy');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Error copying strategy');
+      });
+    });
+  });
+
+// toggle buttons
+document.getElementById('btnSymbols').addEventListener('click',e=>{e.preventDefault();showSymbols();});
+document.getElementById('btnResults').addEventListener('click',e=>{e.preventDefault();showResultsView();});
+
+// initial symbol list
+document.addEventListener("DOMContentLoaded",()=>{
+  loadSymbols(document.getElementById('symbolSelect'));
+  document.querySelectorAll('.symbol-select').forEach(sel=>loadSymbols(sel,sel.dataset.selected));
+});
+
+//search symbol autocomplete
+document.addEventListener("DOMContentLoaded", function() {
+  const input = document.getElementById("symbolSearchInput");
+  const list = document.getElementById("symbolSuggestions");
+  // global instrument cache for tests and other pages
+  window.allSymbols = window.allSymbols || [];
+
+  fetch("{{ url_for('fetch_instruments') }}")
+    .then(r => r.json())
+    .then(data => {
+      window.allSymbols = Array.isArray(data) ? data : [];
+      try{
+        // trigger input on known symbol inputs to refresh suggestions if user already typed
+        ['symbolSearchInput','symbolSearchInputAdd','editSymbolInput'].forEach(id=>{
+          const el = document.getElementById(id);
+          if (el && el.value && el.value.trim().length) el.dispatchEvent(new Event('input'));
+        });
+      }catch(e){ /* non-fatal */ }
+    });
+
+  input.addEventListener("input", function() {
+    const term = input.value.trim().toLowerCase();
+    list.innerHTML = '';
+
+    if (term.length < 1) return;
+
+    const normalize = s => ('' + (s || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nterm = normalize(term);
+    const symbols = window.allSymbols || [];
+    const matches = symbols.filter(item => {
+      try{
+        const nname = normalize(item.name);
+        const nsym = normalize(item.symbol);
+        return (nname && nname.includes(nterm)) || (nsym && nsym.includes(nterm));
+      }catch(e){ return false; }
+    }).slice(0, 10); // top 10 matches
+
+    matches.forEach(item => {
+      const li = document.createElement("li");
+      li.className = "list-group-item list-group-item-action";
+      li.textContent = `${item.name} (${item.symbol})`;
+      li.dataset.symbol = item.symbol;
+      li.addEventListener("click", function() {
+        input.value = item.symbol;
+        list.innerHTML = '';
+      });
+      list.appendChild(li);
+    });
+  });
+
+  // Close suggestions when clicking outside
+  document.addEventListener("click", function(e) {
+    if (!input.contains(e.target) && !list.contains(e.target)) {
+      list.innerHTML = '';
+    }
+  });
+});
+</script>
+
+{% endblock %}

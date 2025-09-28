@@ -1,0 +1,98 @@
+{% extends "base_app.html" %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+  <li class="breadcrumb-item active">Overview</li>
+{% endblock %}
+{% block content %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body" id="tradingview_chart"></div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-body" id="broker-box">
+        <!-- Filled by JS (refreshBalance) -->
+        <div class="text-muted">Loading broker status…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <ul class="nav nav-tabs" id="posTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active"
+                    type="button" role="tab" aria-controls="active" aria-selected="true">
+              Active Positions
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="watchlist-tab" data-bs-toggle="tab" data-bs-target="#watchlist"
+                    type="button" role="tab" aria-controls="watchlist" aria-selected="false">
+              Watchlist
+            </button>
+          </li>
+          <li class="nav-item ms-auto" role="presentation">
+            <button class="btn btn-sm btn-outline-light" id="refreshPositionsBtn" type="button" title="View History">
+              <a href="{{ url_for('trade_history') }}" class="refresh-btn"><i class="bi bi-arrow-clockwise"></i></a>
+            </button></li>
+        </ul>
+
+        <div class="tab-content pt-3">
+          <div class="tab-pane fade show active" id="active" role="tabpanel" aria-labelledby="active-tab">
+            <div id="positions-container" class="list-group small">
+              <p class="text-muted">Loading positions…</p>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="watchlist" role="tabpanel" aria-labelledby="watchlist-tab">
+            <div class="mb-2">
+              <input class="form-control" id="symbolSearch" placeholder="Search instruments… (e.g., ETHUSDT)"/>
+              <ul class="list-group" id="suggestions"></ul>
+            </div>
+            <div id="watchlist-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Broker Modal -->
+<div class="modal fade" id="brokerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="{{ url_for('update_api') }}">
+      <div class="modal-header">
+        <h5 class="modal-title">API Credentials</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Email</label>
+          <input name="email" class="form-control" required value="{{ creds.email if creds else '' }}">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Mobile</label>
+          <input name="mobile" class="form-control" required value="{{ creds.mobile if creds else '' }}">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">API Key</label>
+          <input name="api_key" class="form-control" required value="{{ creds.api_key if creds else '' }}">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Secret Key</label>
+          <input name="secret_key" class="form-control" required value="{{ creds.secret_key if creds else '' }}">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

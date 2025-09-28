@@ -1,0 +1,504 @@
+/* General Layout */
+body {
+  background-color: #f5f7fa;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  color: #333;
+  font-size: smaller;
+}
+
+h3, h5 {
+  font-weight: 600;
+}
+
+.content {
+  margin-top: 100px; /* navbar + breadcrumb space */
+}
+
+/* Navbar */
+.navbar {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Sticky Navbar Custom Design */
+.custom-navbar {
+  background: linear-gradient(90deg, #1a1a2e, #16213e);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  padding: 0.6rem 1.2rem;
+  z-index: 1030;
+}
+
+.custom-navbar .navbar-brand {
+  font-weight: 700;
+  color: #00e0ff !important;
+  letter-spacing: 1px;
+  font-size: 1.2rem;
+}
+
+.custom-navbar .navbar-text {
+  color: #ddd !important;
+  font-size: 0.9rem;
+}
+
+.custom-navbar .nav-link {
+  color: #00e0ff !important;
+  font-weight: 500;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.custom-navbar .nav-link:hover {
+  color: #fff !important;
+  transform: translateY(-2px);
+}
+
+
+/* Cards */
+.card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: none;
+}
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #222;
+}
+
+/* Broker box */
+.broker-box {
+  padding: 10px;
+  border-radius: 10px;
+  background: #f0f9f4;
+  border: 1px solid #d2f1da;
+  transition: all 0.3s ease;
+}
+.broker-box:hover {
+  background: #e6f7ed;
+  transform: translateY(-2px);
+}
+
+/* Watchlist items */
+.watchlist-item {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease-in-out;
+  cursor: pointer;
+}
+.watchlist-item.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.watchlist-item:hover {
+  background: #f9f9f9;
+}
+
+/* Empty watchlist text */
+#watchlist-container p {
+  text-align: center;
+  padding: 10px;
+  color: #888;
+  font-style: italic;
+}
+
+/* Suggestions dropdown */
+#suggestions {
+  max-height: 200px;
+  overflow-y: auto;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+#suggestions .list-group-item {
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+#suggestions .list-group-item:hover {
+  background: #f1f1f1;
+  transform: translateX(5px);
+}
+
+/* Buttons */
+.btn {
+  transition: all 0.2s ease;
+  border-radius: 6px;
+}
+.btn:hover {
+  transform: scale(1.05);
+}
+.btn-success {
+  background-color: #00b96b;
+  border-color: #00b96b;
+}
+.btn-success:hover {
+  background-color: #00a15d;
+}
+
+/* Modal */
+.modal-content {
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+/* Toast */
+.toast {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* TradingView container */
+#tradingview_chart {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Limit Watchlist height and enable smooth scroll */
+#watchlist-container {
+    /* max-height: 300px;*/   /* or use calc(100vh - Xpx) to fit screen dynamically */
+    max-height: calc(65vh - 280px); /* fit visible space */
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;         /* Firefox */
+    scrollbar-color: #888 #f1f1f1; /* Firefox */
+}
+
+/* Chrome, Edge, Safari scrollbar styling */
+#watchlist-container::-webkit-scrollbar {
+    width: 8px;
+}
+#watchlist-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+#watchlist-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+#watchlist-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Chart container */
+#tradingview_chart {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+  height: calc(100vh - 130px); /* fit visible space */
+}
+
+.chart_trading {
+  width: 100%;
+  height: calc(100vh - 250px);
+}
+
+/* Prevent horizontal scrollbar */
+body, html {
+  overflow-x: hidden;
+}
+
+.position-card {
+  border-radius: 12px;
+  background: linear-gradient(to bottom right, #e6f7ff, #b3e0ff);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.position-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+/* .position-card .badge {
+  font-size: 0.75rem;
+  padding: 5px 8px;
+  border-radius: 8px;
+} */
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: #fff;
+  border-right: 1px solid #eee;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  min-height: 100vh;
+  overflow-y: auto;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.05);
+  scrollbar-width: thin; /* For Firefox */
+  scrollbar-color: transparent transparent; /* For Firefox */
+}
+
+ /* WebKit-based browsers (Chrome, Safari, Edge) */ */
+.sidebar::-webkit-scrollbar {
+    width: 8px; /* Set the scrollbar width */
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background-color: transparent; /* Hide the track */
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background-color: transparent; /* Hide the thumb initially */
+    border-radius: 4px;
+}
+
+/* Show scrollbar on hover */
+.sidebar:hover::-webkit-scrollbar-thumb {
+    background-color: #888; /* Color of the thumb on hover */
+}
+
+.sidebar .nav-link {
+  color: #555;
+  font-weight: 500;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.sidebar .nav-link i {
+  margin-right: 10px;
+  font-size: 1.1rem;
+  color: #888;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+  background: #f0f4ff;
+  color: #4e73df;
+}
+
+.sidebar .nav-link.active i {
+  color: #4e73df;
+}
+
+
+/* Breadcrumb */
+.breadcrumb-container {
+  position: fixed;
+  top: 0; 
+  left: 220px; /* aligns with sidebar */
+  right: 0;
+  height: 56px;
+  z-index: 999;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.breadcrumb {
+  margin-bottom: 0;
+}
+
+.breadcrumb a {
+  text-decoration: none;
+  color: #6c757d;
+  font-weight: 500;
+}
+.breadcrumb a:hover {
+  color: #4e73df;
+}
+.breadcrumb-item.active {
+  color: #4e73df;
+  font-weight: 600;
+}
+
+/* Table */
+.table-modern {
+  font-size: 0.82rem; /* slightly smaller */
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.table-modern th {
+  background: #f9fafc;
+  font-weight: 600;
+  color: #444;
+  padding: 0.75rem;
+}
+
+.table-modern td {
+  padding: 0.65rem;
+  vertical-align: middle;
+}
+
+.table-modern tr:hover {
+  background: #f6f8ff;
+  transition: background 0.2s ease;
+}
+
+/* Balance & top bar buttons */
+#top-balance {
+  font-weight: 600;
+  color: #4e73df;
+}
+
+.clr-blue {
+  color: #C0F1FF;
+}
+
+.clr-green {
+  color: #ACF522;
+}
+
+.clr-red {
+  color: #ffbcbc;
+}
+
+.clr-cyan {
+  color: #0b6089;
+}
+
+
+.fab-btn {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  background: #ff8c2e;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 62px;
+  height: 62px;
+  font-size: 2.2rem;
+  font-weight: 700;
+  box-shadow: 0 2px 10px 0 rgba(255,140,46,0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.2s;
+}
+
+.fab-btn:hover {
+  background: #d47319;
+}
+
+.btn-orange{
+  background:#ff6600;
+  color:#fff
+}
+
+.btn-orange:hover{
+  background:#e65c00;
+  color:#fff
+}
+
+#resultsView .card .fs-4{
+  font-weight:700
+}
+
+.negative{
+  color:#dc3545!important
+}
+
+.positive{
+  color:#198754!important
+}
+
+/* small spinner animation for icon-only buttons */
+.spinning {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Refresh button helper styles (icon-only) */
+.refresh-btn {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+.refresh-btn i { font-size: 1rem; transition: transform 0.2s ease, opacity 0.15s ease; }
+.refresh-btn:hover { transform: translateY(-2px); }
+.refresh-btn:active { transform: translateY(0); }
+.refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.refresh-btn.spinning i { opacity: 0.85; }
+
+/* Remove all spinner visuals globally when requested: hide loader overlays and spinner icons */
+/* This rule is intentionally specific so it overrides bootstrap and inline styles. */
+.no-spinners .spinner-border,
+.no-spinners .spinner-grow,
+.no-spinners #pageLoader,
+.no-spinners #globalLoader,
+.no-spinners .spinner-border[role="status"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Allow spinner animations specifically inside elements that opt-in (e.g. refresh/export buttons).
+   This keeps most spinners hidden while allowing small UI feedback where desired. */
+.no-spinners .allow-spinners .spinning,
+.no-spinners #refreshBtn .spinning,
+.no-spinners #exportLink .spinning,
+.no-spinners #exportIcon.spinning {
+  display: inline-block !important;
+  visibility: visible !important;
+  animation: spin 1s linear infinite !important;
+}
+
+/* Stronger rotation for refresh button to make it more obvious */
+#refreshIcon.spinning {
+  animation: spin 0.7s linear infinite !important;
+  transform-origin: 50% 50%;
+}
+
+/* Slight pulsing for download icon while fetching */
+#exportIcon.download-anim {
+  animation: spin 1s linear infinite !important;
+}
+
+/* Utility: apply the no-spinners class to body to disable global spinners across app */
+body.no-spinners {
+  --bs-spinner-width: 0px;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 40px;
+    background-color: #4a5568;
+    margin: 0 16px;
+}
+
+.main-divider {
+    height: 1px;
+    background-color: #4a5568;
+    margin-bottom: 20px;
+}
+
+.paper-mode_col {
+    color: white !important;
+}
+
+.action-icons {
+    position: absolute;
+    right: 10px;
+    top: 207px;
+    display: flex;
+}
+
+.setup-edit-btn{
+  border: none;
+}
+
+.setup-pencil{
+  font-size: smaller;
+}

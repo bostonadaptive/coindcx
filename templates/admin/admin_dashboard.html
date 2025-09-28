@@ -1,0 +1,65 @@
+{% extends "base_app.html" %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Admin</a></li>
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+{% block content %}
+
+<h4 class="mb-4">Admin Panel</h4>
+
+<table class="table table-bordered table-hover align-middle">
+  <thead class="table-light">
+    <tr>
+      <th>ID</th>
+      <th>Email</th>
+      <th>Status</th>
+      <th>Last Login</th>
+      <th>Broker</th>
+      <th>Total Trades</th>
+      <th>Wins</th>
+      <th>Losses</th>
+      <th>Net PnL (INR)</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+      {% set s = stats[u.id] %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <span class="badge bg-{{ 'success' if u.status=='active' else 'danger' }}">
+            {{ u.status }}
+          </span>
+        </td>
+        <td>{{ u.last_login or '-' }}</td>
+        <td>
+          {% set c = creds.get(u.id) %}
+          {% if c %}
+            ✅ Connected
+          {% else %}
+            ❌ Not Set
+          {% endif %}
+        </td>
+        <td>{{ s.total }}</td>
+        <td><span class="text-success fw-bold">{{ s.wins }}</span></td>
+        <td><span class="text-danger fw-bold">{{ s.losses }}</span></td>
+        <td>
+          <span class="{{ 'text-success' if s.net_pnl >= 0 else 'text-danger' }}">
+            {{ "%.2f"|format(s.net_pnl) }}
+          </span>
+        </td>
+        <td>
+          <a href="{{ url_for('toggle_user', user_id=u.id) }}" class="btn btn-sm btn-warning">
+            {{ 'Suspend' if u.status=='active' else 'Activate' }}
+          </a>
+          <a href="{{ url_for('delete_user', user_id=u.id) }}" class="btn btn-sm btn-danger"
+             onclick="return confirm('Delete user {{ u.email }}?')">Delete</a>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

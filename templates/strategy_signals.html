@@ -1,0 +1,140 @@
+{% extends "base_app.html" %}
+
+{% block title %}Strategy Signals{% endblock %}
+
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+  <li class="breadcrumb-item active" aria-current="page">Strategy Signals</li>
+{% endblock %}
+
+{% block content %}
+<div class="py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-0">Strategy Signals</h2>
+      <div class="text-muted">View and manage your strategy signals</div>
+    </div>
+    <div>
+      <button class="btn btn-outline-secondary" onclick="window.APP_CACHE.refreshPositions();">Refresh</button>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card p-3">
+        <div class="text-muted small">Total Signals</div>
+        <div class="h3 mt-2">0</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3">
+        <div class="text-muted small">Open Signals</div>
+        <div class="h3 mt-2 text-success">0</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3">
+        <div class="text-muted small">Closed Signals</div>
+        <div class="h3 mt-2 text-primary">0</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card p-3">
+        <div class="text-muted small">Today's Activity</div>
+        <div class="h4 mt-2">▲ 0 | ▼ 0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3 p-3">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input id="signalsSearch" class="form-control" placeholder="Search by signal ID, symbol, strategy name...">
+        </div>
+      </div>
+      <div class="col-md-6 text-end">
+        <!-- placeholder for controls -->
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width:60px">Sl. No.</th>
+            <th>Strategy</th>
+            <th>Symbol</th>
+            <th>Generated</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Entry Price</th>
+            <th>Exit Price</th>
+            <th>Entry Time</th>
+            <th>Exit Time</th>
+            <th>Trading Status</th>
+            <th>Exit Reason</th>
+          </tr>
+        </thead>
+        <tbody id="signalsTableBody">
+          {%- if signals and signals|length > 0 -%}
+            {%- for r in signals -%}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><span class="badge bg-light text-dark">{{ r.strategy }}</span></td>
+                <td>{{ r.symbol }}</td>
+                <td>{% if r.generated_signal %}<span class="badge bg-info text-white">{{ r.generated_signal }}</span>{% else %}-{% endif %}</td>
+                <td>{% if r.type %}<span class="badge bg-success text-white">{{ r.type }}</span>{% else %}-{% endif %}</td>
+                <td>{% if r.status %}<span class="badge bg-secondary">{{ r.status }}</span>{% else %}-{% endif %}</td>
+                <td>{{ (r.entry_price is not none) and ('₹' ~ ("%0.6f" % r.entry_price)) or '₹N/A' }}</td>
+                <td>{{ (r.exit_price is not none) and ('₹' ~ ("%0.6f" % r.exit_price)) or '₹N/A' }}</td>
+                <td>{{ r.entry_time if (r.entry_time is not none) else '-' }}</td>
+                <td>{{ r.exit_time if (r.exit_time is not none) else '-' }}</td>
+                <td>{% if r.trading_status %}<span class="badge bg-danger">{{ r.trading_status }}</span>{% else %}-{% endif %}</td>
+                <td>{{ r.exit_reason if r.exit_reason else '-' }}</td>
+              </tr>
+            {%- endfor -%}
+          {%- else -%}
+            <!-- rows injected by JS fallback -->
+          {%- endif -%}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // minimal placeholder data for now; will wire to backend API later
+  // keep a small client-side fallback if no server-side data is provided
+  const sample = [];
+  function renderRows(rows){
+    const body = document.getElementById('signalsTableBody');
+    if (!body) return;
+    // only render if tbody is empty (server-side already rendered)
+    if (body.children.length > 0) return;
+    body.innerHTML = '';
+    rows.forEach((r,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i+1}</td>
+        <td><span class="badge bg-light text-dark">${r.strategy||'Agni'}</span></td>
+        <td>${r.symbol||'B-ETH_USDT'}</td>
+        <td><span class="badge bg-success text-white">${r.type||'BUY'}</span></td>
+        <td><span class="badge bg-secondary">${r.status||'CLOSE'}</span></td>
+        <td>${r.entry_price? ('₹'+r.entry_price) : '₹N/A'}</td>
+        <td>${r.exit_price? ('₹'+r.exit_price) : '₹N/A'}</td>
+        <td>${r.entry_time||''}</td>
+        <td>${r.exit_time||''}</td>
+        <td><span class="badge bg-danger">${r.trading_status||'FAILED'}</span></td>
+        <td>${r.exit_reason||'N/A'}</td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{ renderRows(sample); });
+</script>
+<script src="/static/js/strategy_signals.js"></script>
+{% endblock %}

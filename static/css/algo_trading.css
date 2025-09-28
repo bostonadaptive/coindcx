@@ -1,0 +1,36 @@
+/* Compact right column styles for algo_trading page */
+#rightCol { font-size: 0.9rem; }
+#rightCol .card-body { padding: 0.6rem; }
+#rightCol .card .card { margin-bottom: 0.4rem; }
+#rightCol .card .card small { font-size: 0.75rem; color: #6c757d; }
+#rightCol .card .card p { margin: 0; font-size: 0.95rem; }
+#refillWalletBtn { padding: 0.4rem 0.5rem; font-size: 0.9rem; }
+#rightCol { max-height: 80vh; overflow: auto; }
+
+/* Fade utilities for smoother show/hide */
+.fade-hide {
+  transition: opacity 240ms ease-in-out, transform 240ms ease-in-out;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+.fade-show {
+  transition: opacity 240ms ease-in-out, transform 240ms ease-in-out;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Helper to ensure .col collapse/expand animates height smoothly */
+.collapse-anim {
+  transition: height 240ms ease-in-out;
+}
+
+/* Compact view button used in positions table */
+.view-btn {
+  padding: 0.18rem 0.4rem; /* smaller vertical and horizontal padding */
+  font-size: 0.78rem;      /* slightly smaller text */
+  line-height: 1;         
+}
+
+.view-btn i { font-size: 0.9rem; }

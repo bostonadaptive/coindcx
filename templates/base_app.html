@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>{% block title %}TradeLion - AI Trading{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"/>
+  <link href="{{ url_for('static', filename='css/algo_setup.css') }}" rel="stylesheet"/>
+
+  <script src="https://s3.tradingview.com/tv.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body class="bg-light">
+
+<!-- Sidebar -->
+<nav id="sidebar" class="sidebar d-flex flex-column p-3 position-fixed top-0 start-0 vh-100">
+  <!--<a href="{{ url_for('dashboard') }}" class="d-flex align-items-center mb-4 text-decoration-none">
+    <span class="fs-5 fw-bold text-primary">Tiger CoinDCX Algo</span>
+  </a>
+  <a href="{{ url_for('dashboard') }}" class="d-flex align-items-center mb-4 text-decoration-none">
+    <img src="{{ url_for('static', filename='logos/logo.png') }}" alt="AlgoPulse Logo" class="img-fluid" style="max-height: 60px;">
+  </a>-->
+  <a href="{{ url_for('dashboard') }}" class="d-flex align-items-center mb-4 text-decoration-none">
+    <img src="{{ url_for('static', filename='logos/logo_sqr2.png') }}" alt="AlgoPulse Logo" class="img-fluid" style="max-width: 180px;">
+  </a>
+
+  <div class="flex-grow-1 overflow-y-auto">
+    <ul class="nav flex-column">
+      <li>
+        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
+          <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('trade_history') }}" class="nav-link {% if request.endpoint=='trade_history' %}active{% endif %}">
+          <i class="bi bi-graph-up"></i> <span>Trade History</span>
+        </a>
+      </li>
+      <li><a href="{{ url_for('public_strategies') }}" class="nav-link {% if request.endpoint=='public_strategies' %}active{% endif %}"><i class="bi bi-lightbulb"></i> <span>Strategies</span></a></li>
+      <li><a href="{{ url_for('algo_setup') }}" class="nav-link {% if request.endpoint=='algo_setup' %}active{% endif %}"><i class="bi bi-rocket-takeoff"></i> <span>Algo Setup</span></a></li>
+      <li><a href="{{ url_for('algo_trading') }}" class="nav-link {% if request.endpoint=='algo_trading' %}active{% endif %}"><i class="bi bi-cpu"></i> <span>Trade Room</span></a></li>
+      <li>
+        <a href="{{ url_for('backtester') }}" class="nav-link {% if request.endpoint=='backtester' %}active{% endif %}">
+          <i class="bi bi-arrow-repeat"></i> <span>Backtester</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('strategy_signals') }}" class="nav-link {% if request.endpoint=='strategy_signals' %}active{% endif %}">
+          <i class="bi bi-list-stars"></i> <span>Strategy Signals</span>
+        </a>
+      </li>
+
+      <li><a href="#" class="nav-link"><i class="bi bi-bell"></i> <span>Alerts</span></a></li>
+      <li><a href="#" class="nav-link"><i class="bi bi-telephone"></i> <span>Connect with us</span></a></li>
+      <li>
+        <a href="{{ url_for('profile') }}" class="nav-link {% if request.endpoint=='profile' %}active{% endif %}">
+          <i class="bi bi-person"></i> <span>Profile</span>
+        </a>
+      </li>
+
+      <!-- Admin Panel -->
+      {% if g.user and g.user.role and g.user.role.name == "admin" %}
+      <li class="mt-3">
+        <hr>
+        <span class="text-muted small">Admin</span>
+      </li>
+      <li><a href="{{ url_for('admin_dashboard') }}" class="nav-link"><i class="bi bi-shield-lock"></i> <span>Admin Dashboard</span></a></li>
+      <li><a href="{{ url_for('manage_strategies') }}" class="nav-link"><i class="bi bi-kanban"></i> <span>Manage Strategies</span></a></li>
+      <li><a href="{{ url_for('user_management') }}" class="nav-link"><i class="bi bi-people"></i> <span>Users</span></a></li>
+      <li><a href="{{ url_for('admin_db_control') }}" class="nav-link"><i class="bi bi-database"></i> <span>Database</span></a></li>
+      {% endif %}
+
+      <!-- Moderator Panel -->
+      {% if g.user and g.user.role and g.user.role.name == "moderator" %}
+      <li class="mt-3">
+        <hr>
+        <span class="text-muted small">Moderator</span>
+      </li>
+      <li><a href="{{ url_for('affiliate_summary') }}" class="nav-link"><i class="bi bi-diagram-3"></i> <span>Affiliate Members</span></a></li>
+      <li><a href="{{ url_for('my_earnings') }}" class="nav-link"><i class="bi bi-cash-stack"></i> <span>My Earnings</span></a></li>
+      {% endif %}
+    </ul>
+  </div>
+</nav>
+
+<!-- Main content -->
+<div class="content flex-grow-1" style="margin-left:220px;">
+  <!-- Fixed breadcrumb / top bar -->
+  <div class="breadcrumb-container d-flex justify-content-between align-items-center px-3 py-2 border-bottom bg-white">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        {% block breadcrumb %}
+          <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+        {% endblock %}
+      </ol>
+    </nav>
+
+    <!-- Right side: notifications + profile -->
+    <div class="d-flex align-items-center">
+      <!-- Notifications dropdown -->
+      <div class="dropdown me-3">
+        <a href="#" class="btn btn-link position-relative p-0" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-bell fs-4"></i>
+          {% if notifications and notifications|length > 0 %}
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+              {{ notifications|length }}
+            </span>
+          {% endif %}
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="notifDropdown" style="width: 300px; max-height: 350px; overflow-y: auto;">
+          {% if notifications and notifications|length > 0 %}
+            {% for n in notifications %}
+              <li class="dropdown-item small text-wrap">{{ n.message }}</li>
+              {% if not loop.last %}<li><hr class="dropdown-divider"></li>{% endif %}
+            {% endfor %}
+          {% else %}
+            <li class="dropdown-item text-muted small">No new notifications</li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <!-- Profile dropdown -->
+      <div class="dropdown">
+        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" 
+           id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-person-circle fs-4 me-2"></i>
+          <span>{{ creds.first_name if creds and creds.first_name else (user.email.split('@')[0] if user else 'Guest') }}</span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+          <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="bi bi-person-circle me-2"></i> Profile</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i> Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page content -->
+  <div class="container-fluid">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<!-- Global loader overlay (used for instant navigation feedback) -->
+<div id="globalLoader" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.8);z-index:99999;align-items:center;justify-content:center;">
+  <div class="text-center">
+    <div class="spinner-border text-primary" style="width:3rem;height:3rem;"></div>
+    <div class="mt-2 text-muted">Loading…</div>
+  </div>
+</div>
+
+<script>
+  // Show global loader
+  function showGlobalLoader(){
+    try{ const g = document.getElementById('globalLoader'); if(g) g.style.display='flex'; }catch(e){}
+  }
+  function hideGlobalLoader(){
+    try{ const g = document.getElementById('globalLoader'); if(g) g.style.display='none'; }catch(e){}
+  }
+
+  // Hide loader when page is fully loaded
+  document.addEventListener('DOMContentLoaded', ()=>{ hideGlobalLoader(); });
+
+  // Optionally disable all spinner visuals globally by adding the 'no-spinners' class to body.
+  // This helps avoid leftover spinner elements after download/async actions.
+  try{ document.addEventListener('DOMContentLoaded', ()=>{ document.body.classList.add('no-spinners'); }); }catch(e){}
+
+  // Intercept same-origin link clicks and form submits to show loader immediately
+  document.addEventListener('click', function(e){
+    try{
+      const a = e.target.closest('a');
+      if(!a) return;
+      // If anchor requests no global loader, skip
+      if (a.closest && a.closest('[data-no-loader]')) return;
+      const href = a.getAttribute('href');
+      const target = a.getAttribute('target');
+      if(!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('javascript:')) return;
+      // Only intercept same-origin navigations (relative or absolute same host)
+      const url = new URL(href, window.location.href);
+      if(url.origin === window.location.origin && (!target || target === '' || target === '_self')){
+        // show loader and allow navigation
+        showGlobalLoader();
+        // allow link to proceed
+      }
+    }catch(e){}
+  }, true);
+
+  // Show loader on form submit, but only after any inline onsubmit handlers (e.g. confirm()) have run.
+  // Use bubbling phase (default) so that inline onsubmit can cancel the submit and prevent the loader.
+  document.addEventListener('submit', function(e){
+    try{ showGlobalLoader(); }catch(e){}
+  });
+</script>
+<script>
+  // Global APP_CACHE - centralize common API calls and provide subscription hooks
+  (function(){
+    if (window.APP_CACHE) return; // don't override
+    const data = {
+      ltps: {}, // label -> price
+      positions: { real: { open: [], closed: [] }, paper: { open: [], closed: [] } },
+      wallets: { real: null, paper: null }
+    };
+    const listeners = { ltp: [], positions: [], wallets: [] };
+
+    async function postJSON(url, body){
+      try{ const resp = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }); if (!resp.ok) return null; return await resp.json(); }catch(e){ return null; }
+    }
+
+    async function getJSON(url){
+      try{ const resp = await fetch(url); if (!resp.ok) return null; return await resp.json(); }catch(e){ return null; }
+    }
+
+    async function fetchLTP(labels){
+      if (!labels || !labels.length) return null;
+      const body = { labels: Array.from(new Set(labels.map(l=> (''+l).toUpperCase().replace(/[^A-Z0-9]/g,'')))) };
+      const js = await postJSON('/ltp/batch', body);
+      if (!js) return null;
+      const map = js.ltps || js || {};
+      // normalize keys to uppercase alphanumeric
+      Object.keys(map).forEach(k=>{ const kk = (''+k).toUpperCase().replace(/[^A-Z0-9]/g,''); data.ltps[kk]=map[k]; });
+      listeners.ltp.forEach(cb=>{ try{ cb(data.ltps); }catch(e){} });
+      return data.ltps;
+    }
+
+    async function fetchAllPositions(){
+      // real positions
+      const pReal = await getJSON('/get_positions');
+      if (pReal && pReal.open) data.positions.real.open = pReal.open || [];
+      // try to fetch history JSON for real closed trades
+      const hReal = await getJSON('/trade_history/refresh');
+      if (hReal && Array.isArray(hReal.closed)) data.positions.real.closed = hReal.closed;
+
+      // paper positions
+      const pPaper = await getJSON('/paper_positions');
+      if (pPaper && pPaper.open) data.positions.paper.open = pPaper.open || [];
+      if (pPaper && pPaper.closed) data.positions.paper.closed = pPaper.closed || [];
+
+      listeners.positions.forEach(cb=>{ try{ cb(data.positions); }catch(e){} });
+      return data.positions;
+    }
+
+    async function fetchWallets(){
+      const wReal = await getJSON('/get_real_wallet'); if (wReal) data.wallets.real = wReal;
+      const wPaper = await getJSON('/get_paper_wallet'); if (wPaper) data.wallets.paper = wPaper;
+      listeners.wallets.forEach(cb=>{ try{ cb(data.wallets); }catch(e){} });
+      return data.wallets;
+    }
+
+    // Public API
+    const API = {
+      data,
+      on: function(kind, cb){ if (listeners[kind]) listeners[kind].push(cb); },
+      off: function(kind, cb){ if (!listeners[kind]) return; listeners[kind] = listeners[kind].filter(x=>x!==cb); },
+      getLTP: function(label){ return data.ltps[(label||'').toUpperCase().replace(/[^A-Z0-9]/g,'')] || null; },
+      getPositions: function(){ return data.positions; },
+      getWallets: function(){ return data.wallets; },
+      // initialize and start background polling
+      init: async function(opts){
+        opts = opts || {};
+        // initial fetches
+        try{ await fetchAllPositions(); }catch(e){}
+        try{ await fetchWallets(); }catch(e){}
+        // start ltp polling using labels found on page
+        const pollInterval = opts.ltpInterval || 1000;
+        const posInterval = opts.posInterval || 5000;
+        const walletInterval = opts.walletInterval || 7000;
+
+        async function ltpPoll(){
+          try{
+            const labels = Array.from(new Set(Array.from(document.querySelectorAll('[data-label]')).map(el=> (el.dataset.label||'').toUpperCase().replace(/[^A-Z0-9]/g,'')).filter(Boolean)));
+            if (labels.length) await fetchLTP(labels);
+          }catch(e){}
+        }
+
+        ltpPoll();
+        API._ltpTimer = setInterval(ltpPoll, pollInterval);
+
+        API._posTimer = setInterval(()=>{ fetchAllPositions(); }, posInterval);
+        API._walletTimer = setInterval(()=>{ fetchWallets(); }, walletInterval);
+        return API;
+      },
+      // force refreshers
+      refreshLTP: fetchLTP,
+      refreshPositions: fetchAllPositions,
+      refreshWallets: fetchWallets,
+      stop: function(){ if (API._ltpTimer) clearInterval(API._ltpTimer); if (API._posTimer) clearInterval(API._posTimer); if (API._walletTimer) clearInterval(API._walletTimer); }
+    };
+
+    window.APP_CACHE = API;
+
+    // auto init when DOM ready (so pages don't have to call init manually)
+    document.addEventListener('DOMContentLoaded', function(){ try{ window.APP_CACHE.init(); }catch(e){} });
+  })();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+{% extends "base_app.html" %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+  <li class="breadcrumb-item active">strategies</li>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Pricing Table Style */
+.pricing-table {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.pricing-card {
+  flex: 1 1 220px;
+  max-width: 250px;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  text-align: center;
+  transition: transform .2s;
+  position: relative;
+}
+.pricing-card:hover {
+  transform: translateY(-5px);
+}
+
+.pricing-header {
+  color: #fff;
+  padding: 20px;
+  font-weight: bold;
+  position: relative;
+}
+.pricing-header h4 {
+  margin: 0;
+  font-size: 20px;
+}
+
+/* Different Colors */
+.pricing-card.basic .pricing-header { background: #e74c3c; }
+.pricing-card.standard .pricing-header { background: #16a085; }
+.pricing-card.super .pricing-header { background: #f39c12; }
+.pricing-card.ultimate .pricing-header { background: #2980b9; }
+
+.pricing-body {
+  padding: 20px;
+}
+.pricing-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.pricing-body ul li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: #555;
+  text-align: left;
+}
+
+.pricing-body ul li strong {
+  display: inline-block;
+  width: 100px;
+}
+
+.pricing-footer {
+  padding: 20px;
+}
+.pricing-footer .btn {
+  width: 100%;
+  border-radius: 30px;
+}
+</style>
+
+<div class="pricing-table mt-4">
+  {% for s in strategies %}
+  <div class="pricing-card {% if loop.index == 1 %}ultimate{% elif loop.index == 2 %}standard{% elif loop.index == 3 %}super{% else %}basic{% endif %} 
+              {% if not s.is_active %}opacity-50{% endif %}">
+    <div class="pricing-header">
+      <h4>{{ s.name }}</h4>
+      {% if not s.is_active %}
+        <span class="badge bg-secondary position-absolute top-0 start-50 translate-middle mt-2">
+          Coming Soon
+        </span>
+      {% endif %}
+    </div>
+    <div class="pricing-body">
+      <ul>
+        <li><strong>Signals:</strong> {{ s.signals or '3-7' }}</li>
+        <li><strong>Level:</strong> {{ s.level or 'High' }}</li>
+        <li><strong>Gain:</strong> {{ s.gain or '35 - 70%' }}</li>
+        <li><strong>Timeframe:</strong> {{ s.timeframe or '15 Min' }}</li>
+        <li><strong>Users:</strong> {{ s.users or '235' }}</li>
+      </ul>
+    </div>
+    <div class="pricing-footer">
+      {% if s.is_active %}
+        {% if s.video_url %}
+          <button class="btn btn-outline-danger mb-2" data-bs-toggle="modal" data-bs-target="#video{{ s.id }}">
+            <i class="bi bi-play-circle"></i> Watch
+          </button>
+        {% endif %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#info{{ s.id }}">
+          More Info
+        </button>
+      {% else %}
+        <button class="btn btn-secondary" disabled>Coming Soon</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Video Modal (only for active strategies with video) -->
+  {% if s.is_active and s.video_url %}
+  <div class="modal fade" id="video{{ s.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Watch: {{ s.name }} Overview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="ratio ratio-16x9">
+            <iframe 
+              src="{{ s.video_url|replace('watch?v=', 'embed/') }}" 
+              title="{{ s.name }} Video" 
+              frameborder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen>
+            </iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Info Modal (only for active strategies) -->
+  {% if s.is_active %}
+  <div class="modal fade" id="info{{ s.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-lightbulb"></i> Instructions for {{ s.name }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>{{ s.description|safe or "Strategy details coming soon..." }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

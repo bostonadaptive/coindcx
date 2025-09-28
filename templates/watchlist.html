@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Watchlist</h3>
+<ul>
+  {% for item in watchlist %}
+    <li>{{ item.symbol }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

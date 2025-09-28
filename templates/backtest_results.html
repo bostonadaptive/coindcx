@@ -1,0 +1,227 @@
+{% extends "base_app.html" %}
+{% block title %}Backtest Results{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold">Backtester Results</h3>
+    <a href="{{ url_for('backtester') }}" class="btn btn-light">← Back</a>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-3" id="resultsTabs">
+    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#overview">Overview</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#trades">Trades</a></li>
+    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#analytics">Analytics</a></li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- Overview Tab -->
+    <div class="tab-pane fade show active" id="overview">
+      <div class="row g-3">
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Win Rate</h6><h4>{{ metrics.win_rate|round(2) }}%</h4></div></div>
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Net Profit</h6><h4 class="{{ 'text-success' if metrics.net_profit>0 else 'text-danger' }}">₹{{ metrics.net_profit|round(2) }}</h4></div></div>
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Profit Factor</h6><h4>{{ metrics.profit_factor|round(2) }}</h4></div></div>
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Total Trades</h6><h4>{{ metrics.total_trades }}</h4></div></div>
+      </div>
+    </div>
+
+    <!-- Trades Tab -->
+    <div class="tab-pane fade" id="trades">
+      <h5 class="fw-bold mt-3">Trade Summary</h5>
+      <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Winning Trades</h6><h4 class="text-success">{{ metrics.wins }}</h4></div></div>
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Losing Trades</h6><h4 class="text-danger">{{ metrics.losses }}</h4></div></div>
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Avg Daily PnL</h6><h4 class="{{ 'text-success' if metrics.avg_daily_pnl>0 else 'text-danger' }}">₹{{ metrics.avg_daily_pnl|round(2) }}</h4></div></div>
+        <div class="col-md-3"><div class="card p-3 text-center"><h6>Max Drawdown</h6><h4 class="text-danger">₹{{ metrics.max_drawdown|round(2) }}</h4></div></div>
+      </div>
+
+      <h5 class="fw-bold">Trade History</h5>
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Type</th><th>Entry Time</th><th>Entry Price</th>
+              <th>Exit Time</th><th>Exit Price</th><th>Qty</th>
+              <th>P&L</th><th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in trades %}
+            <tr>
+              <td>
+                {% if t.type == "BUY" %}
+                  <span class="badge bg-success">BUY</span>
+                {% else %}
+                  <span class="badge bg-danger">SELL</span>
+                {% endif %}
+              </td>
+              <td>{{ t.entry_time }}</td>
+              <td>₹{{ t.entry_price|round(2) }}</td>
+              <td>{{ t.exit_time }}</td>
+              <td>₹{{ t.exit_price|round(2) }}</td>
+              <td>{{ t.qty|round(4) }}</td>
+              <td>
+                {% if t.pnl >= 0 %}
+                  <span class="text-success">+₹{{ t.pnl|round(2) }}</span>
+                {% else %}
+                  <span class="text-danger">₹{{ t.pnl|round(2) }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if t.reason == "ma_exit" %}
+                  <span class="badge bg-primary">MA Exit</span>
+                {% elif t.reason == "rsi_exit" %}
+                  <span class="badge bg-warning text-dark">RSI Exit</span>
+                {% elif t.reason == "target" %}
+                  <span class="badge bg-success">Target</span>
+                {% elif t.reason == "stoploss" %}
+                  <span class="badge bg-danger">Stoploss</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ t.reason }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div class="tab-pane fade" id="analytics">
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mt-3">Portfolio Equity Curve</h5>
+        <div>
+          <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('daily')">Daily</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('weekly')">Weekly</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('monthly')">Monthly</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('1M')">1M</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('3M')">3M</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('6M')">6M</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="updateEquityView('1Y')">1Y</button>
+        </div>
+      </div>
+      <canvas id="equityChart" height="120"></canvas>
+
+      <h5 class="fw-bold mt-4">Monthly Profit Breakdown</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered text-center">
+          <thead class="table-light">
+            <tr>
+              <th>Year</th>
+              <th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th>
+              <th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for year, months in monthly_table.items() %}
+            <tr>
+              <td>{{ year }}</td>
+              {% for m in ["01","02","03","04","05","06","07","08","09","10","11","12"] %}
+              <td class="{{ 'text-success' if months.get(m,0)>0 else 'text-danger' if months.get(m,0)<0 else '' }}">
+                {{ months.get(m,0)|round(2) }}
+              </td>
+              {% endfor %}
+              <td>{{ months.values()|sum|round(2) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <h5 class="fw-bold mt-4">Daily P&L Performance</h5>
+      <canvas id="dailyPnlChart" height="120"></canvas>
+
+      <h5 class="fw-bold mt-4">Best / Worst Day</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card p-3 text-center">
+            <h6>Best Day</h6>
+            <h4 class="text-success">₹{{ metrics.best_day.pnl|round(2) }}</h4>
+            <small>{{ metrics.best_day.date }}</small>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card p-3 text-center">
+            <h6>Worst Day</h6>
+            <h4 class="text-danger">₹{{ metrics.worst_day.pnl|round(2) }}</h4>
+            <small>{{ metrics.worst_day.date }}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let allEquityData = {{ equity_curve|tojson }};
+let equityChart;
+
+function buildEquityChart(filteredData) {
+  const ctx = document.getElementById('equityChart').getContext('2d');
+  if (equityChart) equityChart.destroy();
+  equityChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: filteredData.map(d => {
+        const date = new Date(d.date);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }),
+      datasets: [{
+        label: "Equity",
+        data: filteredData.map(d => d.equity),
+        borderColor: "blue",
+        backgroundColor: "rgba(0,0,255,0.1)",
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3
+      }]
+    }
+  });
+}
+buildEquityChart(allEquityData);
+
+function updateEquityView(range) {
+  let filtered = [...allEquityData];
+  const now = new Date();
+  if (range === "1M") {
+    const cutoff = new Date(); cutoff.setMonth(now.getMonth() - 1);
+    filtered = filtered.filter(d => new Date(d.date) >= cutoff);
+  } else if (range === "3M") {
+    const cutoff = new Date(); cutoff.setMonth(now.getMonth() - 3);
+    filtered = filtered.filter(d => new Date(d.date) >= cutoff);
+  } else if (range === "6M") {
+    const cutoff = new Date(); cutoff.setMonth(now.getMonth() - 6);
+    filtered = filtered.filter(d => new Date(d.date) >= cutoff);
+  } else if (range === "1Y") {
+    const cutoff = new Date(); cutoff.setFullYear(now.getFullYear() - 1);
+    filtered = filtered.filter(d => new Date(d.date) >= cutoff);
+  }
+  buildEquityChart(filtered);
+}
+
+const dailyPnlData = {{ daily_pnl|tojson }};
+new Chart(document.getElementById('dailyPnlChart'), {
+  type: 'bar',
+  data: {
+    labels: dailyPnlData.map(d => {
+      const date = new Date(d.day);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }),
+    datasets: [{
+      label: "Daily P&L",
+      data: dailyPnlData.map(d => d.pnl),
+      backgroundColor: dailyPnlData.map(d => d.pnl >= 0 ? "green" : "red")
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: true, labels: { generateLabels: () => [{text: "Profit", fillStyle:"green"}, {text:"Loss", fillStyle:"red"}] } } }
+  }
+});
+</script>
+{% endblock %}

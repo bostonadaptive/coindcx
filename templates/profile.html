@@ -1,0 +1,89 @@
+{% extends "base_app.html" %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+  <li class="breadcrumb-item active">Profile</li>
+{% endblock %}
+{% block content %}
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title"></h5>
+    <p><strong>Full Name:</strong> {{ creds.first_name }} {{ creds.last_name }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Mobile:</strong> {{ creds.mobile if creds else '-' }}</p>
+    <p><strong>User ID:</strong> {{ user.id }}</p>
+    <p><strong>Broker Connected:</strong>
+      {% if creds %}<span class="text-success">✅</span>{% else %}<span class="text-danger">❌</span>{% endif %}
+    </p>
+
+    <!-- API Keys -->
+    <div class="mb-2">
+      <strong>API Key:</strong>
+      <span id="apiKey"
+            data-value="{{ creds.api_key if creds else '' }}"
+            data-hidden="true">••••••••••••</span>
+      <a href="#" onclick="toggleVisibility('apiKey', this); return false;" class="ms-2">
+        <i class="bi bi-eye"></i>
+      </a>
+      <a href="#" onclick="editKey('apiKey'); return false;" class="ms-2"><i class="bi bi-pencil-square"></i></a>
+    </div>
+    <div>
+      <strong>Secret Key:</strong>
+      <span id="secretKey"
+            data-value="{{ creds.secret_key if creds else '' }}"
+            data-hidden="true">••••••••••••</span>
+      <a href="#" onclick="toggleVisibility('secretKey', this); return false;" class="ms-2">
+        <i class="bi bi-eye"></i>
+      </a>
+      <a href="#" onclick="editKey('secretKey'); return false;" class="ms-2"><i class="bi bi-pencil-square"></i></a>
+    </div>
+  </div>
+</div>
+
+<!-- Trade Summary -->
+<div class="card">
+  <div class="card-body">
+    <h5 class="card-title">Trade Summary Overview</h5>
+    <div class="row text-center">
+      <div class="col-md-3"><div class="p-2 bg-light rounded">Total Trades<br><strong>{{ total_trades }}</strong></div></div>
+      <div class="col-md-3"><div class="p-2 bg-light rounded">Profitable<br><strong class="text-success">{{ profitable }}</strong></div></div>
+      <div class="col-md-3"><div class="p-2 bg-light rounded">Losses<br><strong class="text-danger">{{ losses }}</strong></div></div>
+      <div class="col-md-3"><div class="p-2 bg-light rounded">Accuracy<br><strong class="text-primary">{{ accuracy }}%</strong></div></div>
+    </div>
+    <div class="mt-3 text-center">
+      Net PnL: <strong class="{{ 'text-success' if net_pnl >= 0 else 'text-danger' }}">{{ net_pnl }} INR</strong>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleVisibility(id, elLink) {
+  const el = document.getElementById(id);
+  const icon = elLink.querySelector("i");
+  if (el.dataset.hidden === "true") {
+    el.innerText = el.dataset.value || "";
+    el.dataset.hidden = "false";
+    icon.classList.remove("bi-eye");
+    icon.classList.add("bi-eye-slash");
+  } else {
+    el.innerText = "••••••••••••";
+    el.dataset.hidden = "true";
+    icon.classList.remove("bi-eye-slash");
+    icon.classList.add("bi-eye");
+  }
+}
+
+function editKey(id) {
+  const el = document.getElementById(id);
+  const newKey = prompt("Enter new value for " + id, el.dataset.value || "");
+  if (newKey) {
+    fetch("/update_api_key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ field: id, value: newKey })
+    }).then(r => location.reload());
+  }
+}
+</script>
+
+{% endblock %}

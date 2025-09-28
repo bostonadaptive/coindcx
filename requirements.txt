@@ -1,0 +1,9 @@
+Flask
+requests
+python-dotenv
+python-socketio
+websocket-client
+pandas
+numpy
+ta
+SQLAlchemy

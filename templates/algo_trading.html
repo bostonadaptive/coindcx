@@ -1,0 +1,1072 @@
+{% extends "base_app.html" %} {% block breadcrumb %}
+<li class="breadcrumb-item">
+  <a href="{{ url_for('dashboard') }}">Dashboard</a>
+</li>
+<li class="breadcrumb-item active">Algo Trading</li>
+{% endblock %} {% block content %}
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='css/algo_trading.css') }}"
+/>
+<div class="row g-3">
+  <div class="col-lg-9" id="leftCol">
+    <div class="card">
+      <div class="card-body" id="tradingview_chart" style="height: 65vh"></div>
+    </div>
+  </div>
+
+  <!-- Right Column for Account Information and Controls -->
+  <div class="col-lg-3" id="rightCol">
+    <!-- Account Information and Wallet Details -->
+    <div class="card mb-3" style="height: 65vh">
+      <div class="card-body">
+        <!-- Account Type & ID -->
+        <div class="container-fluid mb-3">
+          <div class="row justify-content-between">
+            <div class="col-auto me-auto" style="align-content: center; text-align: center;">
+              <div
+                class="text-muted"
+                id="accountId"
+              >
+                <b>Account ID: AUI2025{{ user.id }}</b>
+              </div>
+            </div>
+            <!-- Refill Wallet Button (Only for Paper Trading) -->
+            <div class="col-auto">
+              <button
+                id="refillWalletBtn"
+                class="btn btn-outline-primary w-100"
+                onclick="confirmRefill()"
+                title="Refill Wallet"
+              >
+                <i class="bi-wallet2"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-floating mb-3">
+          <select
+            class="form-select"
+            id="accountType"
+            aria-label="Account Type"
+          >
+            <option value="paper" selected>Paper Trading</option>
+            <option value="real">Real Trading</option>
+          </select>
+          <label for="accountType">Account Type</label>
+        </div>
+        <hr />
+        <!-- Broker Status -->
+        <div id="brokerStatus" class="text-danger">Checking status...</div>
+        <hr />
+
+        <!-- Wallet Details -->
+        <div id="walletDetails">
+          <div id="paperWalletDetails">
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Account Balance</small>
+              <p class="mb-0 fs-8 fw-bold" id="accountBalance">₹0.00</p>
+            </div>
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Realized P&L</small>
+              <p class="mb-0 fs-8 fw-bold text-success" id="paperRealizedPnL">
+                ₹0.00
+              </p>
+            </div>
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Unrealized P&L</small>
+              <p class="mb-0 fs-8 fw-bold text-success" id="paperUnrealizedPnL">
+                ₹0.00
+              </p>
+            </div>
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Available Funds</small>
+              <p class="mb-0 fs-8 fw-bold text-success" id="availableFunds">
+                ₹0.00
+              </p>
+            </div>
+          </div>
+
+          <div id="realWalletDetails" class="d-none">
+            <!-- Real Wallet Details (Loaded from API) -->
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Account Balance</small>
+              <p class="mb-0 fs-8 fw-bold" id="realAccountBalance">₹0.00</p>
+            </div>
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Locked Amount</small>
+              <p class="mb-0 fs-8 fw-bold text-success" id="realLockedAmount">
+                ₹0.00
+              </p>
+            </div>
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Unrealized P&L</small>
+              <p class="mb-0 fs-8 fw-bold text-success" id="realUnrealizedPnL">
+                ₹0.00
+              </p>
+            </div>
+            <div class="card shadow-sm mb-2">
+              <small class="text-muted">Available Funds</small>
+              <p class="mb-0 fs-8 fw-bold text-success" id="realAvailableFunds">
+                ₹0.00
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row g-3">
+  <!-- Trade Table with Positions and History Tabs -->
+    <div class="card mt-3" id="tradesCard">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <ul
+          class="nav nav-pills card-header-pills"
+          id="tradeTabs"
+          role="tablist"
+        >
+          <li class="nav-item view-btn">
+            <a
+              class="nav-link active"
+              id="positions-tab"
+              data-bs-toggle="tab"
+              href="#positions"
+              role="tab"
+              aria-controls="positions"
+              aria-selected="true"
+              >Positions</a
+            >
+          </li>
+          <li class="nav-item view-btn">
+            <a
+              class="nav-link"
+              id="history-tab"
+              data-bs-toggle="tab"
+              href="#history"
+              role="tab"
+              aria-controls="history"
+              aria-selected="false"
+              >History</a
+            >
+          </li>
+        </ul>
+        <div
+          class="btn-group btn-group-sm"
+          role="group"
+          aria-label="Table controls"
+        >
+          <button
+            id="maximizeTableBtn"
+            class="btn btn-outline-secondary .view-btn"
+            title="Maximize table"
+          >
+            <i class="bi bi-arrows-fullscreen"></i>
+          </button>
+          <button
+            id="minimizeTableBtn"
+            class="btn btn-outline-secondary d-none .view-btn"
+            title="Minimize table"
+          >
+            <i class="bi bi-arrows-collapse"></i>
+          </button>
+          <a href="/trade_history" class="btn btn-outline-info" title="View full history" id="viewHistoryBtn">
+            <i class="bi bi-clock-history"></i>
+          </a>
+          <!-- Algo-page-only History controls: Refresh and Export (do not change standalone trade_history) -->
+          <button id="algoHistoryRefreshBtn" class="btn btn-outline-secondary" title="Refresh history preview">
+            <i class="bi bi-arrow-clockwise" id="algoHistoryRefreshIcon"></i>
+          </button>
+          <button id="algoHistoryExportBtn" class="btn btn-outline-secondary" title="Export history CSV" download="trade_history.csv" href="/trade_history/export">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body p-0">
+  <div class="tab-content" id="tradeTabsContent" style="margin-bottom: 24px;">
+          <!-- Active Positions Tab -->
+          <div
+            class="tab-pane fade show active"
+            id="positions"
+            role="tabpanel"
+            aria-labelledby="positions-tab"
+          >
+            <table class="table table-striped table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Pair</th>
+                  <th>Side</th>
+                  <th>Entry time</th>
+                  <th>Entry price</th>
+                  <th>Qty</th>
+                  <th>LTP</th>
+                  <th>P&L</th>
+                  <th>Strategy</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="positionsTableBody">
+                <!-- Dynamic rows inserted by JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- History Tab -->
+          <div
+            class="tab-pane fade"
+            id="history"
+            role="tabpanel"
+            aria-labelledby="history-tab"
+          >
+            <table class="table table-striped table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Side</th>
+                  <th>Entry Time</th>
+                  <th>Entry Price</th>
+                  <th>Exit Time</th>
+                  <th>Exit Price</th>
+                  <th>Qty</th>
+                  <th>P&L</th>
+                  <th>Order</th>
+                  <th>Strategy</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <!-- Dynamic rows inserted by JS -->
+              </tbody>
+            </table>
+            <div class="d-flex justify-content-center my-2">
+              <button id="loadMoreHistoryBtn" class="btn btn-outline-primary btn-sm">Load More</button>
+            </div>
+          </div>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+<!-- Broker Modal -->
+<div class="modal fade" id="brokerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form
+      class="modal-content"
+      method="post"
+      action="{{ url_for('update_api') }}"
+    >
+      <div class="modal-header">
+        <h5 class="modal-title">API Credentials</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Email</label>
+          <input
+            name="email"
+            class="form-control"
+            required
+            value="{{ creds.email if creds else '' }}"
+          />
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Mobile</label>
+          <input
+            name="mobile"
+            class="form-control"
+            required
+            value="{{ creds.mobile if creds else '' }}"
+          />
+        </div>
+        <div class="mb-2">
+          <label class="form-label">API Key</label>
+          <input
+            name="api_key"
+            class="form-control"
+            required
+            value="{{ creds.api_key if creds else '' }}"
+          />
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Secret Key</label>
+          <input
+            name="secret_key"
+            class="form-control"
+            required
+            value="{{ creds.secret_key if creds else '' }}"
+          />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button class="btn btn-primary" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // On page load, check broker status and update
+  document.addEventListener("DOMContentLoaded", function() {
+    checkBrokerStatus();
+    loadPaperWalletData();
+    let historyOffset = 0;
+    let historyLimit = 50;
+  // keep last loaded open/closed positions so wallet updates can recompute balances
+  let lastOpen = [];
+  let lastClosed = [];
+
+    // Format the entry times in the table
+    function formatHistoryTimes() {
+      const entryTimeCells = document.querySelectorAll(".entry-time");
+      entryTimeCells.forEach(cell => {
+        const entryTime = cell.textContent.trim();
+        const formattedTime = formatDateTime(entryTime);
+        cell.textContent = formattedTime;
+      });
+    }
+
+    function checkBrokerStatus() {
+      // Prefer APP_CACHE when available to avoid duplicate network calls
+      try {
+        if (window.APP_CACHE) {
+          const wallets = window.APP_CACHE.getWallets();
+          if (wallets && wallets.real && wallets.real.connected) {
+            document.getElementById("brokerStatus").classList.remove("text-danger");
+            document.getElementById("brokerStatus").classList.add("text-success");
+            if (document.getElementById("accountType").value === "real") {
+              loadRealWalletData();
+            }
+            return;
+          }
+        }
+      } catch (e) {}
+
+      fetch("/check_broker_status")
+        .then(response => response.json())
+        .then(data => {
+          if (data.connected) {
+            document.getElementById("brokerStatus").classList.remove("text-danger");
+            document.getElementById("brokerStatus").classList.add("text-success");
+            if (document.getElementById("accountType").value === "real") {
+              loadRealWalletData();
+            }
+          } else {
+            document.getElementById("brokerStatus").classList.remove("text-success");
+            document.getElementById("brokerStatus").classList.add("text-danger");
+          }
+        })
+        .catch(err => console.error("Error checking broker status:", err));
+    }
+
+    function loadPaperWalletData() {
+      try {
+        if (window.APP_CACHE) {
+          const wallets = window.APP_CACHE.getWallets();
+          if (wallets && wallets.paper) {
+            const data = wallets.paper;
+            const acc = document.getElementById("accountBalance");
+            const realized = document.getElementById("paperRealizedPnL");
+            const unreal = document.getElementById("paperUnrealizedPnL");
+            const avail = document.getElementById("availableFunds");
+            if (acc) acc.innerText = "₹" + (data.balance || 0);
+            if (realized) realized.innerText = "₹" + (data.realized_pnl || 0);
+            if (unreal) unreal.innerText = "₹" + (data.unrealized_pnl || 0);
+            if (avail) avail.innerText = "₹" + (data.available_balance || 0);
+            computeAndDisplayBalances(lastOpen, lastClosed, 'paper');
+            return;
+          }
+        }
+      } catch (e) {}
+
+      fetch("/get_paper_wallet")
+        .then(response => response.json())
+        .then(data => {
+          if (data.balance) {
+            const acc = document.getElementById("accountBalance");
+            const realized = document.getElementById("paperRealizedPnL");
+            const unreal = document.getElementById("paperUnrealizedPnL");
+            const avail = document.getElementById("availableFunds");
+            if (acc) acc.innerText = "₹" + data.balance;
+            if (realized) realized.innerText = "₹" + data.realized_pnl;
+            if (unreal) unreal.innerText = "₹" + data.unrealized_pnl;
+            if (avail) avail.innerText = "₹" + data.available_balance;
+            // recompute using latest positions if present
+            computeAndDisplayBalances(lastOpen, lastClosed, 'paper');
+          }
+        });
+    }
+
+    function loadRealWalletData() {
+      try {
+        if (window.APP_CACHE) {
+          const wallets = window.APP_CACHE.getWallets();
+          if (wallets && wallets.real) {
+            const data = wallets.real;
+            const acc = document.getElementById("realAccountBalance");
+            const realized = document.getElementById("realLockedAmount");
+            const unreal = document.getElementById("realUnrealizedPnL");
+            const avail = document.getElementById("realAvailableFunds");
+            if (acc) acc.innerText = "₹" + (data.balance || 0);
+            if (realized) realized.innerText = "₹" + (data.realized_pnl || 0);
+            if (unreal) unreal.innerText = "₹" + (data.unrealized_pnl || 0);
+            if (avail) avail.innerText = "₹" + (data.available_balance || 0);
+            computeAndDisplayBalances(lastOpen, lastClosed, 'real');
+            return;
+          }
+        }
+      } catch (e) {}
+
+      fetch("/get_real_wallet")
+        .then(response => response.json())
+        .then(data => {
+          if (data.balance) {
+            const acc = document.getElementById("realAccountBalance");
+            const realized = document.getElementById("realLockedAmount");
+            const unreal = document.getElementById("realUnrealizedPnL");
+            const avail = document.getElementById("realAvailableFunds");
+            if (acc) acc.innerText = "₹" + data.balance;
+            if (realized) realized.innerText = "₹" + data.realized_pnl;
+            if (unreal) unreal.innerText = "₹" + data.unrealized_pnl;
+            if (avail) avail.innerText = "₹" + data.available_balance;
+            // recompute using latest positions if present
+            computeAndDisplayBalances(lastOpen, lastClosed, 'real');
+          }
+        });
+    }
+
+    // Handle Account Type change (Paper or Real) - delegate to shared loader to avoid duplicate calls
+    document.getElementById('accountType').addEventListener('change', function () {
+      historyOffset = 0;
+      // load appropriate wallet data and positions/history for the selected account type
+      if (this.value === 'paper') {
+        loadPaperWalletData();
+      } else {
+        checkBrokerStatus();
+      }
+      // delegate to unified loader
+      loadPositionsAndHistory();
+    });
+
+    // Modern loader/spinner overlay
+    function showLoader() {
+      let loader = document.getElementById('modernLoader');
+      if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'modernLoader';
+        loader.style.position = 'fixed';
+        loader.style.top = '0';
+        loader.style.left = '0';
+        loader.style.width = '100vw';
+        loader.style.height = '100vh';
+        loader.style.background = 'rgba(255,255,255,0.7)';
+        loader.style.zIndex = '9999';
+        loader.style.display = 'flex';
+        loader.style.alignItems = 'center';
+        loader.style.justifyContent = 'center';
+        loader.innerHTML = '<div class="spinner-border text-primary" style="width:3rem;height:3rem;"></div>';
+        document.body.appendChild(loader);
+      }
+      loader.style.display = 'flex';
+    }
+    function hideLoader() {
+      let loader = document.getElementById('modernLoader');
+      if (loader) loader.style.display = 'none';
+    }
+
+    // Load positions and history for the selected account type only
+    function loadPositionsAndHistory() {
+      showLoader();
+      const accountType = document.getElementById('accountType').value;
+      if (accountType === 'paper') {
+        // Prefer APP_CACHE
+        try {
+          if (window.APP_CACHE) {
+            const pos = window.APP_CACHE.getPositions();
+            const open = (pos && pos.paper && pos.paper.open) ? pos.paper.open : [];
+            const closed = (pos && pos.paper && pos.paper.closed) ? pos.paper.closed : [];
+            lastOpen = open;
+            lastClosed = closed;
+            renderPositions(open);
+            renderHistory(closed, false);
+            computeAndDisplayBalances(open, closed, 'paper');
+            hideLoader();
+            return;
+          }
+        } catch (e) {}
+
+        // fallback network
+        fetch('/paper_positions').then(res => res.json()).then(data => {
+          const open = data.open || [];
+          const closed = data.closed || [];
+          lastOpen = open;
+          lastClosed = closed;
+          renderPositions(open);
+          renderHistory(closed, false);
+          // compute balances from returned data
+          computeAndDisplayBalances(open, closed, 'paper');
+          hideLoader();
+        }).catch(()=>{ hideLoader(); });
+      } else {
+        try {
+          if (window.APP_CACHE) {
+            const pos = window.APP_CACHE.getPositions();
+            const open = (pos && pos.real && pos.real.open) ? pos.real.open : [];
+            const closed = (pos && pos.real && pos.real.closed) ? pos.real.closed : [];
+            lastOpen = open;
+            lastClosed = closed;
+            renderPositions(open);
+            renderHistory(closed, false);
+            computeAndDisplayBalances(open, closed, 'real');
+            hideLoader();
+            return;
+          }
+        } catch (e) {}
+
+        // fallback to network
+        Promise.all([
+          fetch('/get_positions').then(r => r.json()).catch(() => ({})),
+          fetch('/trade_history/refresh').then(r => r.json()).catch(() => ({ closed: [] }))
+        ]).then(([posData, historyJson]) => {
+          const open = (posData && posData.open) ? posData.open : [];
+          const closed = (historyJson && historyJson.closed) ? historyJson.closed : [];
+          lastOpen = open;
+          lastClosed = closed;
+          renderPositions(open);
+          renderHistory(closed, false);
+          // compute balances from returned data
+          computeAndDisplayBalances(open, closed, 'real');
+          hideLoader();
+        }).catch(()=>{ hideLoader(); });
+      }
+    }
+
+    function renderPositions(open) {
+      const tbody = document.getElementById('positionsTableBody');
+      if (!open.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-muted">No open positions</td></tr>';
+        return;
+      }
+      let rows = '';
+      open.forEach(p => {
+        // Order id: prefer server order_id (real), then paper_order_id, then fallback id
+        const ordFull = (p.order_id || p.paper_order_id || p.id || '') + '';
+        let ordDisplay = '-';
+        if (ordFull) {
+          if (ordFull.length > 12) ordDisplay = `<span title="${ordFull}" data-bs-toggle="tooltip">${ordFull.slice(0,5)}.....${ordFull.slice(-5)}</span>`;
+          else ordDisplay = `<span title="${ordFull}" data-bs-toggle="tooltip">${ordFull}</span>`;
+        }
+
+        const pair = p.pair || p.tv_symbol || '';
+        const sideRaw = (p.side||'-').toUpperCase();
+        const sideBadgeClass = (sideRaw === 'SELL' || sideRaw === 'SHORT') ? 'badge bg-danger' : 'badge bg-success';
+        const sideDisplay = `<span class="${sideBadgeClass}">${sideRaw}</span>`;
+
+        let ltp = (p.ltp !== undefined && p.ltp !== null) ? Number(p.ltp) : (p.mark_px ? Number(p.mark_px) : '-');
+        let entryPx = (p.entry_px !== undefined && p.entry_px !== null) ? Number(p.entry_px) : '-';
+        let qty = Number(p.qty || 0);
+        let pnl = '-';
+        if (typeof ltp === 'number' && typeof entryPx === 'number' && !isNaN(ltp) && !isNaN(entryPx)) {
+          if (sideRaw === 'SELL' || sideRaw === 'SHORT') {
+            pnl = ((entryPx - ltp) * qty);
+          } else {
+            pnl = ((ltp - entryPx) * qty);
+          }
+          if (window._fx_usdt_inr) {
+            pnl = Number(pnl) * Number(window._fx_usdt_inr);
+          }
+        } else {
+          if (p.pnl_open_inr_value !== undefined && p.pnl_open_inr_value !== null && !isNaN(Number(p.pnl_open_inr_value))) {
+            pnl = Number(p.pnl_open_inr_value);
+          } else if (p.pnl_open_inr !== undefined && p.pnl_open_inr !== null && !isNaN(Number(p.pnl_open_inr))) {
+            pnl = Number(p.pnl_open_inr);
+          } else if (p.pnl_open_usdt !== undefined && p.pnl_open_usdt !== null && window._fx_usdt_inr) {
+            pnl = Number(p.pnl_open_usdt) * Number(window._fx_usdt_inr);
+          } else {
+            pnl = Number(p.unrealized_pnl || 0);
+            if (window._fx_usdt_inr) {
+              pnl = Number(pnl) * Number(window._fx_usdt_inr);
+            }
+          }
+        }
+        const pnlClass = String(pnl).startsWith('-') ? 'text-danger' : 'text-success';
+        const displayPnl = (pnl === '-' || isNaN(Number(pnl))) ? '-' : '₹' + Number(pnl).toFixed(2);
+
+        // Strategy display
+        let strategy = 'Manual';
+        if (p.strategy && String(p.strategy).trim() !== '' && String(p.strategy).trim() !== '-') {
+          strategy = p.strategy;
+        } else if (document.getElementById('accountType').value === 'real' && p.id) {
+          const fullId = String(p.id);
+          if (fullId.length > 12) {
+            const shortId = fullId.slice(0,5) + '.....' + fullId.slice(-5);
+            strategy = `<span title="${fullId}" data-bs-toggle="tooltip">${shortId}</span>`;
+          } else {
+            strategy = `<span title="${fullId}" data-bs-toggle="tooltip">${fullId}</span>`;
+          }
+        }
+
+        rows += `<tr>
+          <td>${ordDisplay}</td>
+          <td><strong>${pair}</strong></td>
+          <td>${sideDisplay}</td>
+          <td class="entry-time">${p.entry_at || ''}</td>
+          <td>${entryPx !== '-' ? entryPx : '-'}</td>
+          <td>${qty}</td>
+          <td>${ltp !== '-' ? ltp : '-'}</td>
+          <td class="${pnlClass}">${displayPnl}</td>
+          <td>${strategy}</td>
+          <td><button class="btn btn-sm btn-outline-secondary view-btn" data-symbol="${p.tv_symbol||p.pair||''}">View</button></td>
+        </tr>`;
+      });
+      tbody.innerHTML = rows;
+      formatHistoryTimes();
+      try {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
+      } catch (e) {
+      }
+    }
+
+    // Compute realized/unrealized/available balances and update the UI
+    function computeAndDisplayBalances(open, closed, acctType) {
+      try {
+        // realized: sum of closed trades P&L (prefer pnl_inr, released_pnl, or computed)
+        let realized = 0;
+        (closed || []).forEach(t => {
+          let v = 0;
+          if (t.pnl_inr !== undefined && t.pnl_inr !== null && !isNaN(Number(t.pnl_inr))) v = Number(t.pnl_inr);
+          else if (t.released_pnl !== undefined && t.released_pnl !== null && !isNaN(Number(t.released_pnl))) v = Number(t.released_pnl);
+          else if (t.pnl !== undefined && t.pnl !== null && !isNaN(Number(t.pnl))) {
+            v = Number(t.pnl);
+            if (window._fx_usdt_inr) v = v * Number(window._fx_usdt_inr);
+          }
+          realized += Number(v || 0);
+        });
+
+        // unrealized: sum of open positions running P&L (prefer pnl_open_inr_value, pnl_open_inr, unrealized_pnl)
+        let unreal = 0;
+        (open || []).forEach(p => {
+          let v = 0;
+          if (p.pnl_open_inr_value !== undefined && p.pnl_open_inr_value !== null && !isNaN(Number(p.pnl_open_inr_value))) v = Number(p.pnl_open_inr_value);
+          else if (p.pnl_open_inr !== undefined && p.pnl_open_inr !== null && !isNaN(Number(p.pnl_open_inr))) v = Number(p.pnl_open_inr);
+          else if (p.unrealized_pnl !== undefined && p.unrealized_pnl !== null && !isNaN(Number(p.unrealized_pnl))) v = Number(p.unrealized_pnl);
+          else if (p.pnl_open_usdt !== undefined && p.pnl_open_usdt !== null && !isNaN(Number(p.pnl_open_usdt)) && window._fx_usdt_inr) v = Number(p.pnl_open_usdt) * Number(window._fx_usdt_inr);
+          unreal += Number(v || 0);
+        });
+
+        // account balance: pull from wallet UI elements depending on account type
+        let accBal = 0;
+        if (acctType === 'paper') {
+          const accEl = document.getElementById('accountBalance');
+          if (accEl) accBal = parseCurrency(accEl.innerText || accEl.textContent || '0');
+        } else {
+          const accEl = document.getElementById('realAccountBalance');
+          if (accEl) accBal = parseCurrency(accEl.innerText || accEl.textContent || '0');
+        }
+
+        const available = Number(accBal || 0) + Number(realized || 0) + Number(unreal || 0);
+
+        // Update UI elements & color classes
+        if (acctType === 'paper') {
+          updateMoneyElement('paperRealizedPnL', realized);
+          updateMoneyElement('paperUnrealizedPnL', unreal);
+          updateMoneyElement('availableFunds', available);
+        } else {
+          updateMoneyElement('realLockedAmount', realized);
+          updateMoneyElement('realUnrealizedPnL', unreal);
+          updateMoneyElement('realAvailableFunds', available);
+        }
+      } catch (e) {
+        console.error('Failed to compute balances', e);
+      }
+    }
+
+    function parseCurrency(s) {
+      if (!s) return 0;
+      try {
+        const cleaned = String(s).replace(/[^0-9.-]/g, '').trim();
+        const v = parseFloat(cleaned);
+        return isNaN(v) ? 0 : v;
+      } catch (e) { return 0; }
+    }
+
+    function updateMoneyElement(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const formatted = '₹' + Number(value || 0).toFixed(2);
+      el.innerText = formatted;
+      // set color class
+      el.classList.remove('text-success', 'text-danger');
+      if (Number(value) < 0) el.classList.add('text-danger'); else el.classList.add('text-success');
+    }
+
+    function renderHistory(closed, loadMore) {
+      const tbody = document.getElementById('historyTableBody');
+      if (!closed.length && !loadMore) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-muted">No history</td></tr>';
+        return;
+      }
+      let html = '';
+      closed.forEach(r => {
+        let entryPx = (r.entry_px !== undefined && r.entry_px !== null) ? Number(r.entry_px) : '-';
+        let exitPx = (r.exit_px !== undefined && r.exit_px !== null) ? Number(r.exit_px) : '-';
+        let qty = Number(r.qty || 0);
+        let pnl = '-';
+        if (typeof entryPx === 'number' && typeof exitPx === 'number' && !isNaN(entryPx) && !isNaN(exitPx)) {
+          if ((r.side||'').toUpperCase() === 'SELL' || (r.side||'').toUpperCase() === 'SHORT') {
+            pnl = ((entryPx - exitPx) * qty);
+          } else {
+            pnl = ((exitPx - entryPx) * qty);
+          }
+          if (window._fx_usdt_inr) {
+            pnl = Number(pnl) * Number(window._fx_usdt_inr);
+          }
+        } else {
+          // prefer server INR if present
+          if (r.pnl_inr !== undefined && r.pnl_inr !== null && !isNaN(Number(r.pnl_inr))) {
+            pnl = Number(r.pnl_inr);
+          } else if (r.pnl !== undefined && r.pnl !== null) {
+            pnl = Number(r.pnl);
+            if (window._fx_usdt_inr) pnl = Number(pnl) * Number(window._fx_usdt_inr);
+          } else {
+            pnl = 0;
+          }
+        }
+        const pnlClass = String(pnl).startsWith('-') ? 'text-danger' : 'text-success';
+        const displayPnl = (pnl === '-' || isNaN(Number(pnl))) ? '-' : '₹' + Number(pnl).toFixed(2);
+        const acctType = document.getElementById('accountType').value;
+        let strategy = 'Manual';
+        if (r.strategy && String(r.strategy).trim() !== '' && String(r.strategy).trim() !== '-') {
+          strategy = r.strategy;
+        } else if (acctType === 'real' && r.id) {
+          const fullId = String(r.id);
+          if (fullId.length > 12) {
+            const shortId = fullId.slice(0,5) + '.....' + fullId.slice(-5);
+            strategy = `<span title="${fullId}" data-bs-toggle="tooltip">${shortId}</span>`;
+          } else {
+            strategy = `<span title="${fullId}" data-bs-toggle="tooltip">${fullId}</span>`;
+          }
+        }
+        const ordFull = (r.order_id || r.id || '') + '';
+        let ordDisplay = '';
+        if (ordFull) {
+          if (ordFull.length > 12) ordDisplay = `<span title="${ordFull}" data-bs-toggle="tooltip">${ordFull.slice(0,5)}.....${ordFull.slice(-5)}</span>`;
+          else ordDisplay = `<span title="${ordFull}" data-bs-toggle="tooltip">${ordFull}</span>`;
+        }
+        html += `<tr>
+          <td>${r.pair || ''}</td>
+          <td>${r.side || ''}</td>
+          <td class="entry-time">${r.entry_at || ''}</td>
+          <td>${entryPx !== '-' ? entryPx : ''}</td>
+          <td>${r.exit_at || ''}</td>
+          <td>${exitPx !== '-' ? exitPx : ''}</td>
+          <td>${qty}</td>
+          <td class="${pnlClass}">${displayPnl}</td>
+          <td>${ordDisplay}</td>
+          <td>${strategy}</td>
+        </tr>`;
+      });
+      if (loadMore) {
+        tbody.innerHTML += html;
+      } else {
+        tbody.innerHTML = html;
+      }
+      formatHistoryTimes();
+      // init tooltips
+      try {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (el) { return new bootstrap.Tooltip(el); });
+      } catch (e) {}
+    }
+
+    // On account type change, reload positions/history and wallet
+    document.getElementById('accountType').addEventListener('change', function () {
+      historyOffset = 0;
+      if (this.value === 'paper') {
+        document.getElementById('paperWalletDetails').classList.remove('d-none');
+        document.getElementById('realWalletDetails').classList.add('d-none');
+        loadPaperWalletData();
+        document.getElementById('refillWalletBtn').classList.remove('d-none');
+      } else {
+        document.getElementById('paperWalletDetails').classList.add('d-none');
+        document.getElementById('realWalletDetails').classList.remove('d-none');
+        checkBrokerStatus();
+        document.getElementById('refillWalletBtn').classList.add('d-none');
+      }
+      loadPositionsAndHistory();
+    });
+
+    // Initial load
+    loadPositionsAndHistory();
+    // If APP_CACHE is present, subscribe to updates for reactive UI
+    try {
+      if (window.APP_CACHE) {
+        window.APP_CACHE.on('positions', function(pos) {
+          try {
+            const acct = document.getElementById('accountType').value;
+            // pos may include real/paper keys
+            const target = acct === 'paper' ? (pos.paper || {}) : (pos.real || {});
+            const open = target.open || [];
+            const closed = target.closed || [];
+            lastOpen = open;
+            lastClosed = closed;
+            renderPositions(open);
+            renderHistory(closed, false);
+            computeAndDisplayBalances(open, closed, acct);
+          } catch(e) { console.warn('APP_CACHE positions handler failed', e); }
+        });
+
+        window.APP_CACHE.on('wallets', function(w) {
+          try {
+            const acct = document.getElementById('accountType').value;
+            if (acct === 'paper') loadPaperWalletData(); else loadRealWalletData();
+          } catch(e) { console.warn('APP_CACHE wallets handler failed', e); }
+        });
+
+        // LTP updates may change position P&L; re-render positions and recompute balances on LTP events
+        window.APP_CACHE.on('ltp', function(ltpUpdate) {
+          try {
+            // Refresh displayed LTP in table rows if present
+            // and recompute running P&L for open positions
+            const acct = document.getElementById('accountType').value;
+            renderPositions(lastOpen || []);
+            computeAndDisplayBalances(lastOpen || [], lastClosed || [], acct);
+          } catch(e) { console.warn('APP_CACHE ltp handler failed', e); }
+        });
+      }
+    } catch(e) { console.warn('Failed to subscribe to APP_CACHE events', e); }
+
+    // Unified loader for closed-history preview and load-more behavior.
+    // Uses APP_CACHE when available, otherwise falls back to server endpoints.
+    // Supports historyOffset/historyLimit for paging when available.
+    async function loadHistory(loadMore) {
+      try {
+        loadMore = !!loadMore;
+        const acctType = document.getElementById('accountType').value;
+        // If loading more, increment offset (paging handled client-side when using APP_CACHE)
+        if (loadMore) historyOffset = (historyOffset || 0) + (historyLimit || 50);
+        // Helper to slice results according to offset/limit
+        function sliceForPage(arr) {
+          if (!Array.isArray(arr)) return [];
+          const off = historyOffset || 0;
+          const lim = historyLimit || arr.length;
+          return arr.slice(off, off + lim);
+        }
+
+        if (acctType === 'paper') {
+          // Prefer APP_CACHE
+          if (window.APP_CACHE) {
+            const pos = window.APP_CACHE.getPositions();
+            const closedAll = (pos && pos.paper && pos.paper.closed) ? pos.paper.closed : [];
+            const chunk = sliceForPage(closedAll);
+            if (!loadMore) {
+              lastClosed = closedAll.slice(0, historyLimit || closedAll.length);
+            } else {
+              lastClosed = (lastClosed || []).concat(chunk);
+            }
+            renderHistory(loadMore ? chunk : lastClosed, loadMore);
+            computeAndDisplayBalances(lastOpen || [], lastClosed || [], 'paper');
+            return;
+          }
+
+          // Fallback: fetch paper history from server (server may return all closed rows)
+          const url = '/paper_history';
+          const res = await fetch(url).catch(()=>null);
+          if (!res || !res.ok) {
+            if (!loadMore) document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="9" class="text-muted">No history</td></tr>';
+            return;
+          }
+          const js = await res.json().catch(()=>({ closed: [] }));
+          const closedAll = js.closed || [];
+          const chunk = sliceForPage(closedAll);
+          if (!loadMore) lastClosed = closedAll.slice(0, historyLimit || closedAll.length); else lastClosed = (lastClosed || []).concat(chunk);
+          renderHistory(loadMore ? chunk : lastClosed, loadMore);
+          computeAndDisplayBalances(lastOpen || [], lastClosed || [], 'paper');
+          return;
+        }
+
+        // Real account history
+        if (window.APP_CACHE) {
+          const pos = window.APP_CACHE.getPositions();
+          const closedAll = (pos && pos.real && pos.real.closed) ? pos.real.closed : [];
+          const chunk = sliceForPage(closedAll);
+          if (!loadMore) {
+            lastClosed = closedAll.slice(0, historyLimit || closedAll.length);
+          } else {
+            lastClosed = (lastClosed || []).concat(chunk);
+          }
+          renderHistory(loadMore ? chunk : lastClosed, loadMore);
+          computeAndDisplayBalances(lastOpen || [], lastClosed || [], 'real');
+          return;
+        }
+
+        // Fallback network call for real account preview
+        const res = await fetch('/trade_history/refresh').catch(()=>null);
+        if (!res || !res.ok) {
+          if (!loadMore) document.getElementById('historyTableBody').innerHTML = '<tr><td colspan="9" class="text-muted">No history</td></tr>';
+          return;
+        }
+        const js = await res.json().catch(()=>({ closed: [] }));
+        const closedAll = js.closed || [];
+        const chunk = sliceForPage(closedAll);
+        if (!loadMore) lastClosed = closedAll.slice(0, historyLimit || closedAll.length); else lastClosed = (lastClosed || []).concat(chunk);
+        renderHistory(loadMore ? chunk : lastClosed, loadMore);
+        computeAndDisplayBalances(lastOpen || [], lastClosed || [], 'real');
+      } catch (err) {
+        console.warn('loadHistory failed', err);
+      }
+    }
+
+    document.getElementById('loadMoreHistoryBtn').addEventListener('click', function() {
+      const acctType = document.getElementById('accountType').value;
+      if (acctType === 'real') {
+        // Redirect to full trade history page for real accounts
+        window.location.href = '/trade_history';
+        return;
+      }
+      historyOffset += historyLimit;
+      loadHistory(true);
+    });
+
+  // Initial load
+  loadPositionsAndHistory();
+  loadHistory();
+  // Wire Algo-page-only History Refresh/Export buttons
+  try {
+    const algoRefresh = document.getElementById('algoHistoryRefreshBtn');
+    const algoRefreshIcon = document.getElementById('algoHistoryRefreshIcon');
+    const algoExport = document.getElementById('algoHistoryExportBtn');
+    if (algoRefresh) {
+      algoRefresh.addEventListener('click', async function(){
+        try {
+          algoRefresh.disabled = true;
+          if (algoRefreshIcon) algoRefreshIcon.className = 'bi bi-arrow-clockwise spinning';
+          const res = await fetch('/trade_history/refresh');
+          if (!res.ok) throw new Error('Refresh failed: ' + res.status);
+          const ct = res.headers.get('content-type') || '';
+          if (!ct.includes('application/json')) {
+            const txt = await res.text().catch(()=>'');
+            console.warn('Expected JSON from /trade_history/refresh but got:', ct, txt.substring(0,200));
+            throw new Error('Unexpected response from server. Are you logged in?');
+          }
+          const js = await res.json();
+          // If embedded fragment present, update its stats and table; otherwise call local renderHistory
+          const historyTab = document.getElementById('history');
+          if (historyTab && historyTab.querySelector('table.table tbody')) {
+            // update stats if present
+            const statTotal = historyTab.querySelector('#stat-total'); if (statTotal) statTotal.textContent = js.total || 0;
+            const statWins = historyTab.querySelector('#stat-wins'); if (statWins) statWins.textContent = js.wins || 0;
+            const statLoss = historyTab.querySelector('#stat-losses'); if (statLoss) statLoss.textContent = js.losses || 0;
+            const statAcc = historyTab.querySelector('#stat-acc'); if (statAcc) statAcc.textContent = (js.acc !== undefined ? js.acc : 0) + '%';
+            // Replace table body
+            const tbody = historyTab.querySelector('table.table tbody');
+            if (tbody) {
+              let html = '';
+              if (js.closed && js.closed.length) {
+                js.closed.forEach(t=>{
+                  const id = (t.id||'').toString();
+                  const shortId = id.slice(0,5) + '.....' + id.slice(-5);
+                  const sideCls = (t.side||'').toLowerCase() === 'long' ? 'bg-success' : 'bg-danger';
+                  const pnlRaw = (t.pnl_inr||'').toString();
+                  let pnlClean = pnlRaw.replace(/[$₹]|INR/gi, '').replace(/,/g,'').trim();
+                  let pnlClass = 'text-success';
+                  try{ let p = parseFloat(pnlClean); pnlClean = isFinite(p) ? p.toFixed(2) : pnlClean; pnlClass = (p < 0) ? 'text-danger' : 'text-success'; }catch(e){ pnlClass = (pnlClean||'').startsWith('-') ? 'text-danger' : 'text-success'; }
+                  html += `<tr>`+
+                          `<td><span class="trade-id text-muted" title="${t.id}">${shortId}</span></td>`+
+                          `<td>${t.pair||''}</td>`+
+                          `<td><span class="badge ${sideCls}">${(t.side||'').toUpperCase()}</span></td>`+
+                          `<td>${t.qty||''}</td>`+
+                          `<td>${t.entry_px||''}</td>`+
+                          `<td>${t.exit_px||''}</td>`+
+                          `<td>${t.lev||''}</td>`+
+                          `<td class="fw-bold ${pnlClass}">${pnlClean||''}</td>`+
+                          `<td class="text-nowrap">${t.entry_at||''}</td>`+
+                          `<td class="text-nowrap">${t.exit_at||''}</td>`+
+                          `</tr>`;
+                });
+              } else {
+                html = '<tr><td colspan="10" class="text-muted text-center">No closed trades found yet.</td></tr>';
+              }
+              tbody.innerHTML = html;
+            }
+          } else {
+            // fallback: call existing renderHistory
+            try { renderHistory(js.closed || [], false); } catch(e) {}
+          }
+        } catch (err) { console.error('Algo history refresh failed', err); alert('Failed to refresh history'); }
+        finally { algoRefresh.disabled = false; if (algoRefreshIcon) algoRefreshIcon.className = 'bi bi-arrow-clockwise'; }
+      });
+    }
+    if (algoExport) {
+      algoExport.addEventListener('click', async function(){
+        let icon = algoExport.querySelector('i');
+        try {
+          algoExport.disabled = true;
+          if (icon) icon.className = 'bi bi-download spinning';
+          const acctType = (document.getElementById('accountType') && document.getElementById('accountType').value) ? document.getElementById('accountType').value : 'real';
+          if (acctType === 'paper') {
+            // Fetch paper history JSON and build CSV client-side
+            const res = await fetch('/paper_history');
+            if (!res.ok) throw new Error('Paper history fetch failed: ' + res.status);
+            const js = await res.json();
+            const rows = js.closed || [];
+            // Build CSV
+            const cols = ["id","pair","side","qty","entry_px","exit_px","lev","pnl (INR)","entry_at","exit_at"];
+            let out = cols.join(',') + '\n';
+            rows.forEach(r => {
+              const pnl = (r.released_pnl !== undefined && r.released_pnl !== null) ? r.released_pnl : '';
+              const row = [
+                JSON.stringify(r.id || ''),
+                JSON.stringify(r.pair || ''),
+                JSON.stringify(r.side || ''),
+                JSON.stringify(r.qty || ''),
+                JSON.stringify(r.entry_px || ''),
+                JSON.stringify(r.exit_px || ''),
+                JSON.stringify(r.leverage || r.lev || ''),
+                '"' + String(pnl).replace(/"/g,'""') + '"',
+                JSON.stringify(r.entry_at || ''),
+                JSON.stringify(r.exit_at || '')
+              ];
+              out += row.join(',') + '\n';
+            });
+            const blob = new Blob([out], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'Paper Trade History.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+          } else {
+            // Real account: call server export which returns CSV
+            const res = await fetch('/trade_history/export');
+            if (!res.ok) throw new Error('Export failed: ' + res.status);
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('text/csv') && !ct.includes('application/octet-stream')) {
+              const txt = await res.text().catch(()=>'<no-body>');
+              console.warn('Expected CSV from /trade_history/export but got:', ct, txt.substring(0,200));
+              alert('Export failed: server returned unexpected response (maybe not logged in).');
+            } else {
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'coinDCX Trade History.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            }
+          }
+        } catch(e) { console.error('Export failed', e); alert('Export failed'); }
+        finally { if (algoExport) algoExport.disabled = false; if (icon) icon.className = 'bi bi-download'; }
+      });
+    }
+  } catch(e){ console.warn('Failed to wire algo history controls', e); }
+  });
+</script>
+
+{% endblock %}
