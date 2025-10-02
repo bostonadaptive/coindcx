@@ -496,7 +496,7 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                 except Exception:
                     pnl = 0.0
                 open_trade.exit_price = exit_px
-                open_trade.exit_time = datetime.utcnow()
+                open_trade.exit_time = datetime.now(timezone.utc)
                 open_trade.status = 'CLOSED'
                 # record a human-readable exit reason (allow test-provided hint)
                 try:
@@ -522,7 +522,7 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                         ss = StrategySignal.query.filter_by(strategy_id=us.strategy_id, symbol=us.symbol, status='ACTIVE').order_by(StrategySignal.entry_time.desc()).first()
                         if ss:
                             ss.exit_price = exit_px
-                            ss.exit_time = datetime.utcnow()
+                            ss.exit_time = datetime.now(timezone.utc)
                             ss.status = 'EXITED'
                             try:
                                 if exit_reason_hint:
@@ -557,7 +557,7 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                         import uuid
                         poid = f"PAPER-{uuid.uuid4().hex}"
                         pt = PaperTrade(user_id=us.user_id, config_id=us.id, symbol=us.symbol, side='BUY', qty=qty,
-                                        entry_price=cur_price or None, entry_time=datetime.utcnow(), status='OPEN', strategy=str(strategy_name or ''),
+                                        entry_price=cur_price or None, entry_time=datetime.now(timezone.utc), status='OPEN', strategy=str(strategy_name or ''),
                                         margin=margin, leverage=leverage, locked_amount=margin)
                         try:
                             if entry_reason:
@@ -602,7 +602,7 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                 except Exception:
                     pnl = 0.0
                 open_trade.exit_price = exit_px
-                open_trade.exit_time = datetime.utcnow()
+                open_trade.exit_time = datetime.now(timezone.utc)
                 open_trade.status = 'CLOSED'
                 try:
                     if exit_reason_hint:
@@ -627,7 +627,7 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                         ss = StrategySignal.query.filter_by(strategy_id=us.strategy_id, symbol=us.symbol, status='ACTIVE').order_by(StrategySignal.entry_time.desc()).first()
                         if ss:
                             ss.exit_price = exit_px
-                            ss.exit_time = datetime.utcnow()
+                            ss.exit_time = datetime.now(timezone.utc)
                             ss.status = 'EXITED'
                             try:
                                 if ss.entry_price and float(ss.entry_price) > 0:
@@ -663,7 +663,7 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                         import uuid
                         poid = f"PAPER-{uuid.uuid4().hex}"
                         pt = PaperTrade(user_id=us.user_id, config_id=us.id, symbol=us.symbol, side='SELL', qty=qty,
-                                        entry_price=cur_price or None, entry_time=datetime.utcnow(), status='OPEN', strategy=str(strategy_name or ''),
+                                        entry_price=cur_price or None, entry_time=datetime.now(timezone.utc), status='OPEN', strategy=str(strategy_name or ''),
                                         margin=margin, leverage=leverage, locked_amount=margin)
                         pt.paper_order_id = poid
                         db.session.add(pt)

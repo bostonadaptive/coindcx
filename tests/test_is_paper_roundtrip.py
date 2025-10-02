@@ -75,6 +75,6 @@ def test_is_paper_add_edit_roundtrip(client):
     assert resp2.status_code == 200
 
     with app.app_context():
-        s2 = UserStrategySetup.query.get(s.id)
+        s2 = db.session.get(UserStrategySetup, s.id)
         assert s2 is not None
         assert s2.is_paper is False

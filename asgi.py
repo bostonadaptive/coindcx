@@ -228,6 +228,186 @@ async def api_get_instruments(request: Request):
         return JSONResponse({'error': 'not_implemented'}, status_code=404)
     except Exception as e:
         return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
+
+
+# Native: check broker connection status (direct DB + helper, no Flask view coercion)
+@log_exceptions
+@fastapi_app.get('/api/check_broker_status_native')
+async def api_check_broker_status_native(request: Request):
+    try:
+        uid = _get_request_user_id(request)
+        if not uid:
+            return JSONResponse({'error': 'not_authenticated'}, status_code=401)
+
+        try:
+            if hasattr(legacy_module, 'app'):
+                with legacy_module.app.app_context():
+                    creds = legacy_module.Credentials.query.filter_by(user_id=uid).first()
+            else:
+                creds = legacy_module.Credentials.query.filter_by(user_id=uid).first()
+            if not creds:
+                return JSONResponse({'connected': False, 'error': 'no_credentials'})
+
+            try:
+                res = legacy_module.get_balance_from_api(creds.api_key, creds.secret_key)
+                return JSONResponse(res)
+            except Exception:
+                # If the helper fails, return a conservative disconnected response
+                return JSONResponse({'connected': False})
+        except Exception:
+            return JSONResponse({'connected': False}, status_code=500)
+    except Exception as e:
+        return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
+
+
+# Native: fetch real account data (balance/pnl) for logged-in user
+@log_exceptions
+@fastapi_app.get('/api/get_real_account_data_native')
+async def api_get_real_account_data_native(request: Request):
+    try:
+        uid = _get_request_user_id(request)
+        if not uid:
+            return JSONResponse({'error': 'not_authenticated'}, status_code=401)
+
+        try:
+            if hasattr(legacy_module, 'app'):
+                with legacy_module.app.app_context():
+                    creds = legacy_module.Credentials.query.filter_by(user_id=uid).first()
+            else:
+                creds = legacy_module.Credentials.query.filter_by(user_id=uid).first()
+
+            if creds:
+                try:
+                    broker_data = legacy_module.get_balance_from_api(creds.api_key, creds.secret_key)
+                except Exception:
+                    broker_data = {}
+                return JSONResponse({
+                    'success': True,
+                    'balance': broker_data.get('balance'),
+                    'realized_pnl': broker_data.get('realized'),
+                    'unrealized_pnl': broker_data.get('unrealized'),
+                    'available_balance': broker_data.get('available')
+                })
+
+            return JSONResponse({'success': False}, status_code=404)
+        except Exception:
+            return JSONResponse({'success': False}, status_code=500)
+    except Exception as e:
+        return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
+
+
+# Native: add to watchlist (direct DB update under Flask app context)
+@log_exceptions
+@fastapi_app.post('/api/add_watchlist_native')
+async def api_add_watchlist_native(request: Request):
+    try:
+        uid = _get_request_user_id(request)
+        if not uid:
+            return JSONResponse({'error': 'not_authenticated'}, status_code=401)
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        symbol = data.get('symbol')
+        if not symbol:
+            return JSONResponse({'error': 'symbol required'}, status_code=400)
+
+        if hasattr(legacy_module, 'app'):
+            with legacy_module.app.app_context():
+                try:
+                    tv, label = legacy_module.parse_to_tv_symbol(symbol)
+                    if not legacy_module.Watchlist.query.filter_by(user_id=uid, symbol=tv).first():
+                        legacy_module.db.session.add(legacy_module.Watchlist(user_id=uid, symbol=tv))
+                        legacy_module.db.session.commit()
+                    return JSONResponse({'message': 'Added', 'symbol': tv, 'label': label})
+                except Exception:
+                    try:
+                        legacy_module.db.session.rollback()
+                    except Exception:
+                        pass
+                    return JSONResponse({'error': 'internal'}, status_code=500)
+
+        return JSONResponse({'error': 'not_implemented'}, status_code=404)
+    except Exception as e:
+        return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
+
+
+# Native: remove from watchlist
+@log_exceptions
+@fastapi_app.post('/api/remove_watchlist_native')
+async def api_remove_watchlist_native(request: Request):
+    try:
+        uid = _get_request_user_id(request)
+        if not uid:
+            return JSONResponse({'error': 'not_authenticated'}, status_code=401)
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        symbol = data.get('symbol')
+        if not symbol:
+            return JSONResponse({'error': 'symbol required'}, status_code=400)
+
+        if hasattr(legacy_module, 'app'):
+            with legacy_module.app.app_context():
+                try:
+                    item = legacy_module.Watchlist.query.filter_by(user_id=uid, symbol=symbol).first()
+                    if item:
+                        legacy_module.db.session.delete(item)
+                        legacy_module.db.session.commit()
+                    return JSONResponse({'message': 'Removed'})
+                except Exception:
+                    try:
+                        legacy_module.db.session.rollback()
+                    except Exception:
+                        pass
+                    return JSONResponse({'error': 'internal'}, status_code=500)
+
+        return JSONResponse({'error': 'not_implemented'}, status_code=404)
+    except Exception as e:
+        return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
+
+
+# Native: update api key/secret
+@log_exceptions
+@fastapi_app.post('/api/update_api_key_native')
+async def api_update_api_key_native(request: Request):
+    try:
+        uid = _get_request_user_id(request)
+        if not uid:
+            return JSONResponse({'error': 'not_authenticated'}, status_code=401)
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        field = data.get('field')
+        value = data.get('value')
+        if field not in ('apiKey', 'secretKey'):
+            return JSONResponse({'error': 'invalid_field'}, status_code=400)
+
+        if hasattr(legacy_module, 'app'):
+            with legacy_module.app.app_context():
+                try:
+                    creds = legacy_module.Credentials.query.filter_by(user_id=uid).first()
+                    if not creds:
+                        creds = legacy_module.Credentials(user_id=uid)
+                        legacy_module.db.session.add(creds)
+                    if field == 'apiKey':
+                        creds.api_key = value
+                    else:
+                        creds.secret_key = value
+                    legacy_module.db.session.commit()
+                    return JSONResponse({'success': True})
+                except Exception:
+                    try:
+                        legacy_module.db.session.rollback()
+                    except Exception:
+                        pass
+                    return JSONResponse({'error': 'internal'}, status_code=500)
+
+        return JSONResponse({'error': 'not_implemented'}, status_code=404)
+    except Exception as e:
+        return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
     except Exception as e:
         return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
 
@@ -262,17 +442,28 @@ async def api_strategy_signals_adapter(request: Request):
     try:
         # try calling the legacy api_strategy_signals view (which expects Flask request/session)
         if hasattr(legacy_module, 'api_strategy_signals') and hasattr(legacy_module, 'app'):
+            # determine user override from query/header/session on FastAPI Request
+            uid = _get_request_user_id(request)
             with legacy_module.app.test_request_context(query_string=dict(request.query_params)):
-                # copy session if available
+                # copy session override if available (this allows tests to pass user_id via ?user_id=)
                 try:
                     from flask import session as _fsession
-                    if isinstance(getattr(request, 'session', {}), dict) and request.session.get('user_id'):
-                        _fsession['user_id'] = request.session.get('user_id')
+                    if uid:
+                        _fsession['user_id'] = uid
+                    else:
+                        if isinstance(getattr(request, 'session', {}), dict) and request.session.get('user_id'):
+                            _fsession['user_id'] = request.session.get('user_id')
                 except Exception:
                     pass
                 resp = legacy_module.api_strategy_signals()
             try:
-                return JSONResponse(resp.get_json() if hasattr(resp, 'get_json') else resp)
+                # legacy view may return Flask response or (payload, status)
+                if hasattr(resp, 'get_json'):
+                    return JSONResponse(resp.get_json())
+                if isinstance(resp, tuple) and len(resp) >= 1:
+                    body = resp[0]
+                    return JSONResponse(body)
+                return JSONResponse(resp)
             except Exception:
                 return JSONResponse({'error': 'failed_to_coerce_response'}, status_code=500)
         return JSONResponse({'error': 'not_implemented'}, status_code=404)
@@ -388,6 +579,45 @@ async def api_get_balance(request: Request):
                     return JSONResponse(resp.get_json() if hasattr(resp, 'get_json') else resp)
                 except Exception:
                     return JSONResponse({'error': 'failed_to_coerce_response'})
+            return JSONResponse({'error': 'internal'}, status_code=500)
+    except Exception as e:
+        return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)
+
+
+# Native: get balance for given user_id (supports query/header/user session overrides)
+@log_exceptions
+@fastapi_app.get('/api/get_balance_native')
+async def api_get_balance_native(request: Request):
+    try:
+        uid = _get_request_user_id(request)
+        if not uid:
+            return JSONResponse({'error': 'not_authenticated'}, status_code=401)
+
+        try:
+            if hasattr(legacy_module, 'app'):
+                with legacy_module.app.app_context():
+                    creds = legacy_module.Credentials.query.filter_by(user_id=uid).first()
+            else:
+                creds = legacy_module.Credentials.query.filter_by(user_id=uid).first()
+            if not creds:
+                return JSONResponse({"connected": False, "error": "no_credentials"})
+            result = legacy_module.get_balance_from_api(creds.api_key, creds.secret_key)
+            return JSONResponse(result)
+        except Exception:
+            # fallback to legacy view if available
+            if hasattr(legacy_module, 'get_balance'):
+                try:
+                    if hasattr(legacy_module, 'app'):
+                        with legacy_module.app.test_request_context():
+                            resp = legacy_module.get_balance()
+                    else:
+                        resp = legacy_module.get_balance()
+                    try:
+                        return JSONResponse(resp.get_json() if hasattr(resp, 'get_json') else resp)
+                    except Exception:
+                        return JSONResponse({'error': 'failed_to_coerce_response'})
+                except Exception:
+                    return JSONResponse({'error': 'internal'}, status_code=500)
             return JSONResponse({'error': 'internal'}, status_code=500)
     except Exception as e:
         return JSONResponse({'error': 'internal', 'msg': str(e)}, status_code=500)

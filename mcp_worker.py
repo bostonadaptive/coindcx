@@ -5,7 +5,7 @@
 - Starts as a daemon thread when requested by the Flask app.
 """
 import threading, time, json, traceback, os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from mcp_client import mcp_get, mcp_post
@@ -32,7 +32,7 @@ def _save_to_db(key: str, value: dict):
         rec = db.session.query(MCPCache).filter_by(key=key).first()
         if rec:
             rec.value_json = js
-            rec.updated_at = datetime.utcnow()
+            rec.updated_at = datetime.now(timezone.utc)
         else:
             rec = MCPCache(key=key, value_json=js)
             db.session.add(rec)

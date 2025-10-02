@@ -22,7 +22,7 @@ NOTE: This script runs within the Flask app context so it can use `db` safely.
 It is purposely verbose.
 """
 import os, time, traceback, json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app import app
 from model import db, UserStrategySetup, PaperTrade
@@ -61,7 +61,7 @@ def fetch_recent_closes(tv_symbol, tf=TF, lookback_hours=48):
     # best-effort: call public function if present
     try:
         from app import fetch_candles
-        end = datetime.utcnow()
+        end = datetime.now(timezone.utc)
         start = end - timedelta(hours=lookback_hours)
         c = fetch_candles(pair or tv_symbol, tf, start, end)
         closes = [float(x.get('c') or 0) for x in c]
@@ -115,7 +115,7 @@ def run_once():
                     side='BUY' if signal=='BUY' else 'SELL',
                     qty=qty,
                     entry_price=price,
-                    entry_time=datetime.utcnow(),
+                    entry_time=datetime.now(timezone.utc),
                     margin=us.margin or 0,
                     leverage=us.leverage or 1,
                     locked_amount=(us.margin or 0),

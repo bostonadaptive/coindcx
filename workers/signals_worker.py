@@ -12,7 +12,7 @@ Notes:
    exchange stream you use.
 """
 import os, time, json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import traceback
 
 try:
@@ -75,7 +75,7 @@ def compute_and_store(us_id, symbol, strategy_name):
     try:
         # pair_market from symbol (expecting tv symbol like 'BINANCE:BTCUSDT' or 'BTCUSDT')
         pair_market = tv_to_pair_market(symbol)
-        end_dt = datetime.utcnow()
+        end_dt = datetime.now(timezone.utc)
         # Worker candle window in days (smaller default for speed). Can be overridden by env.
         days = int(os.environ.get('WORKER_CANDLE_DAYS', '3'))
         start_dt = end_dt - timedelta(days=days)
@@ -92,7 +92,8 @@ def compute_and_store(us_id, symbol, strategy_name):
             rec={'signal':'-','updated_at':int(time.time()*1000),'symbol':symbol}
         else:
             df_signals = func(df)
-            if getattr(df_signals,'empty',True): rec={'signal':'-','updated_at':int(time.time()*1000),'symbol':symbol}
+            if getattr(df_signals,'empty',True):
+                rec={'signal':'-','updated_at':int(time.time()*1000),'symbol':symbol}
             else:
                 last = df_signals.iloc[-1]
                 sig = 'BUY' if last.get('buy_signal') else ('SELL' if last.get('sell_signal') else 'HOLD')
