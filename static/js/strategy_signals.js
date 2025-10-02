@@ -41,6 +41,7 @@
         <td>${toLocal(r.entry_time)}</td>
         <td>${toLocal(r.exit_time)}</td>
         <td><span class="badge bg-danger">${r.trading_status||''}</span></td>
+        <td>${r.entry_reason||''}</td>
         <td>${r.exit_reason||''}</td>
       `;
       body.appendChild(tr);

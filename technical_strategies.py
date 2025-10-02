@@ -8,6 +8,7 @@ import math
 # If you use 'ta' library, import it
 import ta
 
+
 def intraday_strategy(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     required_cols = ['close', 'open', 'high', 'low', 'volume']
@@ -315,56 +316,113 @@ def ai_strategy(df: pd.DataFrame) -> pd.DataFrame:
     buy = (is_hammer | is_bull_engulf | w_pattern | (near_support & (body_signed > 0)))
     sell = (is_shooting_star | is_bear_engulf | (near_resistance & (body_signed < 0)) | is_hanging_man)
 
-    entry_reason = pd.Series('', index=df.index)
-    exit_reason = pd.Series('', index=df.index)
-    entry_reason[is_hammer] = 'hammer'
-    entry_reason[is_bull_engulf] = 'bullish_engulfing'
-    entry_reason[w_pattern] = 'W_pattern'
-    entry_reason[near_support & (body_signed > 0)] = 'support_bounce'
+    # Build prioritized mappings (first-match wins) for human-readable reasons.
+    entry_reason = pd.Series(index=df.index, dtype=object)
+    exit_reason = pd.Series(index=df.index, dtype=object)
 
-    exit_reason[is_shooting_star] = 'shooting_star'
-    exit_reason[is_bear_engulf] = 'bearish_engulfing'
-    exit_reason[near_resistance & (body_signed < 0)] = 'resistance_rejection'
-    exit_reason[is_hanging_man] = 'hanging_man'
+    # Priority-ordered buy patterns
+    buy_priority = [
+        ('hammer', is_hammer),
+        ('bullish_engulfing', is_bull_engulf),
+        ('W_pattern', w_pattern),
+        ('support_bounce', near_support & (body_signed > 0)),
+    ]
+
+    # Priority-ordered sell patterns
+    sell_priority = [
+        ('shooting_star', is_shooting_star),
+        ('bearish_engulfing', is_bear_engulf),
+        ('resistance_rejection', near_resistance & (body_signed < 0)),
+        ('hanging_man', is_hanging_man),
+    ]
+
+    # Assign entry reasons: first matching pattern wins per row
+    for reason, cond in buy_priority:
+        try:
+            mask = cond & entry_reason.isna()
+            entry_reason.loc[mask] = reason
+        except Exception:
+            # defensive: skip if shapes/types mismatch
+            continue
+
+    # Assign exit reasons similarly
+    for reason, cond in sell_priority:
+        try:
+            mask = cond & exit_reason.isna()
+            exit_reason.loc[mask] = reason
+        except Exception:
+            continue
 
     df['buy_signal'] = buy.fillna(False).astype(bool)
     df['sell_signal'] = sell.fillna(False).astype(bool)
-    df['entry_reason'] = entry_reason.replace('', None)
-    df['exit_reason'] = exit_reason.replace('', None)
+    # Use None for empty reasons (so downstream code can check for presence)
+    df['entry_reason'] = entry_reason.where(entry_reason.notna(), None)
+    df['exit_reason'] = exit_reason.where(exit_reason.notna(), None)
 
     return df
 
-STRATEGY_MAP: Dict[str, Dict[str, Any]] = {
-    "Intraday": {
-        "func": intraday_strategy,
-        "default_timeframes": ["15m"]
-    },
-    "Scalping": {
-        "func": scalping_strategy,
-        "default_timeframes": ["15m"]
-    },
-    "Swing": {
-        "func": swing_strategy,
-        "default_timeframes": ["2h", "4h"]
-    },
-    "Short-Term": {
-        "func": short_term_strategy,
-        "default_timeframes": ["8h", "1d"]
-    },
-    "Long-Term": {
-        "func": long_term_strategy,
-        "default_timeframes": ["1d", "1w"]
-    },
-    "Trend Speed Analyzer": {
-        "func": trend_speed_analyzer_strategy,
-        "default_timeframes": ["15m", "1h"]
-    }
+# STRATEGY_MAP: Dict[str, Dict[str, Any]] = {
+#     "Intraday": {
+#         "func": intraday_strategy,
+#         "default_timeframes": ["15m"]
+#     },
+#     "Scalping": {
+#         "func": scalping_strategy,
+#         "default_timeframes": ["15m"]
+#     },
+#     "Swing": {
+#         "func": swing_strategy,
+#         "default_timeframes": ["2h", "4h"]
+#     },
+#     "Short-Term": {
+#         "func": short_term_strategy,
+#         "default_timeframes": ["8h", "1d"]
+#     },
+#     "Long-Term": {
+#         "func": long_term_strategy,
+#         "default_timeframes": ["1d", "1w"]
+#     },
+#     "Trend Speed Analyzer": {
+#         "func": trend_speed_analyzer_strategy,
+#         "default_timeframes": ["15m", "1h"]
+#     }
 
-    ,"Twin Range Filter": {
+#     ,"Twin Range Filter": {
+#         "func": twin_range_filter_strategy,
+#         "default_timeframes": ["15m", "1h"]
+#     }
+#     ,"ai": {
+#         "func": ai_strategy,
+#         "default_timeframes": ["15m", "1h"]
+#     }
+# }
+
+STRATEGY_MAP = {
+    'intraday': {
+        "default_timeframes": ["15m"],
+        "func": intraday_strategy
+    },
+    'scalping': {
+        "default_timeframes": ["15m"],
+        "func": scalping_strategy
+    },
+    'swing': {
+        "default_timeframes": ["2h"],
+        "func": swing_strategy
+    },
+    'short-term': {
+        "default_timeframes": ["4h"],
+        "func": short_term_strategy
+    },
+    'long-term': {
+        "default_timeframes": ["1d"],
+        "func": long_term_strategy
+    }
+    ,"twin range filter": {
         "func": twin_range_filter_strategy,
         "default_timeframes": ["15m", "1h"]
     }
-    ,"AI": {
+    , 'ai': {
         "func": ai_strategy,
         "default_timeframes": ["15m", "1h"]
     }

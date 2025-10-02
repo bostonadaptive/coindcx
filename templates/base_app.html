@@ -11,80 +11,18 @@
 
   <script src="https://s3.tradingview.com/tv.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
 
 </head>
 <body class="bg-light">
 
-<!-- Sidebar -->
-<nav id="sidebar" class="sidebar d-flex flex-column p-3 position-fixed top-0 start-0 vh-100">
-  <!--<a href="{{ url_for('dashboard') }}" class="d-flex align-items-center mb-4 text-decoration-none">
-    <span class="fs-5 fw-bold text-primary">Tiger CoinDCX Algo</span>
-  </a>
-  <a href="{{ url_for('dashboard') }}" class="d-flex align-items-center mb-4 text-decoration-none">
-    <img src="{{ url_for('static', filename='logos/logo.png') }}" alt="AlgoPulse Logo" class="img-fluid" style="max-height: 60px;">
-  </a>-->
-  <a href="{{ url_for('dashboard') }}" class="d-flex align-items-center mb-4 text-decoration-none">
-    <img src="{{ url_for('static', filename='logos/logo_sqr2.png') }}" alt="AlgoPulse Logo" class="img-fluid" style="max-width: 180px;">
-  </a>
-
-  <div class="flex-grow-1 overflow-y-auto">
-    <ul class="nav flex-column">
-      <li>
-        <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}">
-          <i class="bi bi-speedometer2"></i> <span>Dashboard</span>
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('trade_history') }}" class="nav-link {% if request.endpoint=='trade_history' %}active{% endif %}">
-          <i class="bi bi-graph-up"></i> <span>Trade History</span>
-        </a>
-      </li>
-      <li><a href="{{ url_for('public_strategies') }}" class="nav-link {% if request.endpoint=='public_strategies' %}active{% endif %}"><i class="bi bi-lightbulb"></i> <span>Strategies</span></a></li>
-      <li><a href="{{ url_for('algo_setup') }}" class="nav-link {% if request.endpoint=='algo_setup' %}active{% endif %}"><i class="bi bi-rocket-takeoff"></i> <span>Algo Setup</span></a></li>
-      <li><a href="{{ url_for('algo_trading') }}" class="nav-link {% if request.endpoint=='algo_trading' %}active{% endif %}"><i class="bi bi-cpu"></i> <span>Trade Room</span></a></li>
-      <li>
-        <a href="{{ url_for('backtester') }}" class="nav-link {% if request.endpoint=='backtester' %}active{% endif %}">
-          <i class="bi bi-arrow-repeat"></i> <span>Backtester</span>
-        </a>
-      </li>
-      <li>
-        <a href="{{ url_for('strategy_signals') }}" class="nav-link {% if request.endpoint=='strategy_signals' %}active{% endif %}">
-          <i class="bi bi-list-stars"></i> <span>Strategy Signals</span>
-        </a>
-      </li>
-
-      <li><a href="#" class="nav-link"><i class="bi bi-bell"></i> <span>Alerts</span></a></li>
-      <li><a href="#" class="nav-link"><i class="bi bi-telephone"></i> <span>Connect with us</span></a></li>
-      <li>
-        <a href="{{ url_for('profile') }}" class="nav-link {% if request.endpoint=='profile' %}active{% endif %}">
-          <i class="bi bi-person"></i> <span>Profile</span>
-        </a>
-      </li>
-
-      <!-- Admin Panel -->
-      {% if g.user and g.user.role and g.user.role.name == "admin" %}
-      <li class="mt-3">
-        <hr>
-        <span class="text-muted small">Admin</span>
-      </li>
-      <li><a href="{{ url_for('admin_dashboard') }}" class="nav-link"><i class="bi bi-shield-lock"></i> <span>Admin Dashboard</span></a></li>
-      <li><a href="{{ url_for('manage_strategies') }}" class="nav-link"><i class="bi bi-kanban"></i> <span>Manage Strategies</span></a></li>
-      <li><a href="{{ url_for('user_management') }}" class="nav-link"><i class="bi bi-people"></i> <span>Users</span></a></li>
-      <li><a href="{{ url_for('admin_db_control') }}" class="nav-link"><i class="bi bi-database"></i> <span>Database</span></a></li>
-      {% endif %}
-
-      <!-- Moderator Panel -->
-      {% if g.user and g.user.role and g.user.role.name == "moderator" %}
-      <li class="mt-3">
-        <hr>
-        <span class="text-muted small">Moderator</span>
-      </li>
-      <li><a href="{{ url_for('affiliate_summary') }}" class="nav-link"><i class="bi bi-diagram-3"></i> <span>Affiliate Members</span></a></li>
-      <li><a href="{{ url_for('my_earnings') }}" class="nav-link"><i class="bi bi-cash-stack"></i> <span>My Earnings</span></a></li>
-      {% endif %}
-    </ul>
-  </div>
-</nav>
+<!-- Render cached header fragment if available to avoid re-rendering heavy sidebar/topbar each request -->
+{% if CACHED_BASE_HEADER is defined and CACHED_BASE_HEADER %}
+  {{ CACHED_BASE_HEADER | safe }}
+{% else %}
+  {# fallback: include fragment directly if cache not populated #}
+  {% include '_fragments/base_header.html' %}
+{% endif %}
 
 <!-- Main content -->
 <div class="content flex-grow-1" style="margin-left:220px;">
@@ -129,6 +67,8 @@
           <i class="bi bi-person-circle fs-4 me-2"></i>
           <span>{{ creds.first_name if creds and creds.first_name else (user.email.split('@')[0] if user else 'Guest') }}</span>
         </a>
+        <!-- Socket status badge (updated by client code) -->
+        <span id="socketStatus" class="badge bg-secondary ms-3">Socket: unknown</span>
         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
           <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="bi bi-person-circle me-2"></i> Profile</a></li>
           <li><hr class="dropdown-divider"></li>
@@ -164,6 +104,8 @@
 </div>
 
 <script>
+  // Server-provided LTP snapshot (populated by app.context_processor inject_app_ltps)
+  try{ window.APP_LTPS = {{ APP_LTPS | tojson | safe }}; }catch(e){ window.APP_LTPS = {}; }
   // Show global loader
   function showGlobalLoader(){
     try{ const g = document.getElementById('globalLoader'); if(g) g.style.display='flex'; }catch(e){}
@@ -214,6 +156,12 @@
       positions: { real: { open: [], closed: [] }, paper: { open: [], closed: [] } },
       wallets: { real: null, paper: null }
     };
+    // Seed with server-injected snapshot (optimistic realtime values). APP_LTPS injected by Flask.
+    try{
+      if (typeof APP_LTPS !== 'undefined' && APP_LTPS){
+        Object.keys(APP_LTPS).forEach(k=>{ data.ltps[(''+k).toUpperCase().replace(/[^A-Z0-9]/g,'')] = APP_LTPS[k]; });
+      }
+    }catch(e){}
     const listeners = { ltp: [], positions: [], wallets: [] };
 
     async function postJSON(url, body){
@@ -225,15 +173,48 @@
     }
 
     async function fetchLTP(labels){
+      // Use the websocket-cached endpoint which is futures-aware and faster for realtime UI.
       if (!labels || !labels.length) return null;
-      const body = { labels: Array.from(new Set(labels.map(l=> (''+l).toUpperCase().replace(/[^A-Z0-9]/g,'')))) };
-      const js = await postJSON('/ltp/batch', body);
-      if (!js) return null;
-      const map = js.ltps || js || {};
-      // normalize keys to uppercase alphanumeric
-      Object.keys(map).forEach(k=>{ const kk = (''+k).toUpperCase().replace(/[^A-Z0-9]/g,''); data.ltps[kk]=map[k]; });
-      listeners.ltp.forEach(cb=>{ try{ cb(data.ltps); }catch(e){} });
-      return data.ltps;
+      const uniq = Array.from(new Set(labels.map(l=> (''+l).toUpperCase().replace(/[^A-Z0-9]/g,'')))).filter(Boolean);
+      if (!uniq.length) return null;
+      // call /ltp_ws which accepts comma-separated labels via the 'label' query param
+      try{
+        const q = encodeURIComponent(uniq.join(','));
+        // small wait to allow aggregator to populate if needed (0-3 allowed)
+        const js = await getJSON('/ltp_ws?label=' + q + '&wait=0.3');
+        if (!js) return null;
+        // endpoint may return {ltp: {...}} or {label: L, ltp: V} for single label
+        let map = js.ltps || js || {};
+        if (js.label && (js.ltp !== undefined)){
+          map = {};
+          map[js.label] = js.ltp;
+        }
+        Object.keys(map).forEach(k=>{ const kk = (''+k).toUpperCase().replace(/[^A-Z0-9]/g,''); data.ltps[kk]=map[k]; });
+
+        // If some requested labels were missing (null), attempt a REST fallback per-label using /ltp
+        try{
+          const missing = [];
+          labels.forEach(l=>{ const kk = (''+l).toUpperCase().replace(/[^A-Z0-9]/g,''); if (!(kk in data.ltps) || data.ltps[kk]===null) missing.push(l); });
+          if (missing.length){
+            // Fetch each missing label via /ltp (REST fallback) in parallel
+            await Promise.all(missing.map(async lab=>{
+              try{
+                const q = encodeURIComponent(lab);
+                const res = await getJSON('/ltp?label=' + q);
+                if (res && (res.ltp !== undefined)){
+                  const kk = (''+res.label).toUpperCase().replace(/[^A-Z0-9]/g,'');
+                  data.ltps[kk] = res.ltp;
+                }
+              }catch(e){}
+            }));
+          }
+        }catch(e){}
+
+        listeners.ltp.forEach(cb=>{ try{ cb(data.ltps); }catch(e){} });
+        return data.ltps;
+      }catch(e){
+        return null;
+      }
     }
 
     async function fetchAllPositions(){

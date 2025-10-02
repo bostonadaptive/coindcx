@@ -5,11 +5,12 @@
 - Starts as a daemon thread when requested by the Flask app.
 """
 import threading, time, json, traceback, os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from mcp_client import mcp_get, mcp_post
 from model import db, MCPCache
+from global_cache import set as gc_set
 
 _redis_url = os.environ.get('REDIS_URL') or os.environ.get('REDIS_URI')
 _redis = None
@@ -31,7 +32,7 @@ def _save_to_db(key: str, value: dict):
         rec = db.session.query(MCPCache).filter_by(key=key).first()
         if rec:
             rec.value_json = js
-            rec.updated_at = datetime.utcnow()
+            rec.updated_at = datetime.now(timezone.utc)
         else:
             rec = MCPCache(key=key, value_json=js)
             db.session.add(rec)
@@ -62,12 +63,17 @@ def poll_once():
             continue
         try:
             res = mcp_get(p)
-            key = f'mcp:{p}'
+            key = p
             if res is not None:
-                _save_to_redis(key, res)
-                # try to persist a lightweight DB copy
+                # update global in-memory cache for fast app reads
                 try:
-                    _save_to_db(key, {'ts': int(time.time()), 'payload': res})
+                    gc_set(key, res, ttl=max(60, POLL_INTERVAL*3))
+                except Exception:
+                    pass
+                # also update redis & DB
+                _save_to_redis(f'mcp:{key}', {'ts': int(time.time()), 'payload': res})
+                try:
+                    _save_to_db(f'mcp:{key}', {'ts': int(time.time()), 'payload': res})
                 except Exception:
                     pass
         except Exception:

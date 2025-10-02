@@ -17,7 +17,8 @@ with app.app_context():
     db.session.commit()
 
     # create user strategy setup
-    us = UserStrategySetup(user_id=u.id, symbol='ETHUSDT', strategy_id=None, margin=5000.0, leverage=40, timeframe='15m', is_active=True, is_paper=True)
+    # store symbol in CoinDCX display format
+    us = UserStrategySetup(user_id=u.id, symbol=app.format_pair_display('ETHUSDT'), strategy_id=None, margin=5000.0, leverage=40, timeframe='15m', is_active=True, is_paper=True)
     db.session.add(us)
     db.session.commit()
 

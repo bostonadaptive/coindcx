@@ -99,39 +99,70 @@
 
 {% block scripts %}
 <script>
-  document.addEventListener('DOMContentLoaded', function(){
-    function renderPositionsList(open){
-      const container = document.getElementById('positions-container');
-      if (!container) return;
-      if (!open || !open.length){ container.innerHTML = '<p class="text-muted">No open positions</p>'; return; }
-      let html = '';
-      open.forEach(p=>{
-        const pnl = (p.pnl_open_inr_value !== undefined && p.pnl_open_inr_value !== null) ? Number(p.pnl_open_inr_value) : (p.unrealized_pnl || 0);
-        const cls = Number(pnl) < 0 ? 'text-danger' : 'text-success';
-        html += `<div class="list-group-item d-flex justify-content-between align-items-center">`+
-                `<div><strong>${p.pair || p.tv_symbol || ''}</strong><br><small class="text-muted">${p.side||''} • Qty: ${p.qty||''}</small></div>`+
-                `<div class="text-end"><div class="fw-bold ${cls}">₹${Number(pnl||0).toFixed(2)}</div></div>`+
-                `</div>`;
-      });
-      container.innerHTML = html;
+document.addEventListener('DOMContentLoaded', function(){
+  // --- LocalStorage keys ---
+  const POS_KEY = 'cached_positions';
+  const BAL_KEY = 'cached_balance';
+
+  function renderPositionsList(open){
+    const container = document.getElementById('positions-container');
+    if (!container) return;
+    if (!open || !open.length){ container.innerHTML = '<p class="text-muted">No open positions</p>'; return; }
+    let html = '';
+    open.forEach(p=>{
+      const pnl = (p.pnl_open_inr_value !== undefined && p.pnl_open_inr_value !== null) ? Number(p.pnl_open_inr_value) : (p.unrealized_pnl || 0);
+      const cls = Number(pnl) < 0 ? 'text-danger' : 'text-success';
+      function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\'/g,"&#39;"); }
+      function reasonSpan(s){ if(!s) return ''; const full=esc(s); const short = full.length>30? full.slice(0,30)+'...': full; return `<div><small class="text-muted" title="${full}" data-bs-toggle="tooltip">${short}</small></div>`; }
+      const pairLabel = p.pair || p.tv_symbol || '';
+      let ltp = '-';
+      html += `<div class="list-group-item d-flex justify-content-between align-items-center">`+
+        `<div><strong>${p.pair || tvToCoindcxPair(p.tv_symbol) || p.tv_symbol || ''}</strong>${reasonSpan(p.entry_reason)}<br><small class="text-muted">${p.side||''} • Qty: ${p.qty||''}</small></div>`+
+        `<div class="text-end"><div class="fw-bold ${cls}">₹${Number(pnl||0).toFixed(2)}</div><div class="small text-muted">LTP: <span data-label="${pairLabel}">-</span></div></div>`+
+        `</div>`;
+    });
+    container.innerHTML = html;
+    try{ var t = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]')); t.map(function(el){ return new bootstrap.Tooltip(el); }); }catch(e){}
+  }
+
+  function renderBrokerBox(wallet){
+    const box = document.getElementById('broker-box');
+    if (!box) return;
+    box.innerHTML = `<div><strong>Balance:</strong> ₹${wallet.balance || '-'}<br><small class="text-muted">${wallet.status || ''}</small></div>`;
+  }
+
+  // --- Display cached data immediately ---
+  try {
+    const cachedPos = localStorage.getItem(POS_KEY);
+    if (cachedPos) {
+      const js = JSON.parse(cachedPos);
+      renderPositionsList(js.open || []);
     }
+  } catch(e){}
+  try {
+    const cachedBal = localStorage.getItem(BAL_KEY);
+    if (cachedBal) {
+      const js = JSON.parse(cachedBal);
+      renderBrokerBox(js);
+    }
+  } catch(e){}
 
-    // Try APP_CACHE first
-    try{
-      if (window.APP_CACHE){
-        const wallets = window.APP_CACHE.getWallets();
-        if (wallets && wallets.real) renderBrokerBox(wallets.real);
-        const pos = window.APP_CACHE.getPositions();
-        if (pos && pos.real && pos.real.open) renderPositionsList(pos.real.open);
-        window.APP_CACHE.on('positions', function(p){ try{ const open = (p.real && p.real.open) ? p.real.open : []; renderPositionsList(open); }catch(e){} });
-        window.APP_CACHE.on('wallets', function(w){ try{ if (w.real) renderBrokerBox(w.real); }catch(e){} });
-        return;
-      }
-    }catch(e){}
-
-    // Fallback: network fetch
-    fetch('/get_positions').then(r=>r.json()).then(js=>{ renderPositionsList(js.open || []); }).catch(()=>{});
-    fetch('/get_real_wallet').then(r=>r.json()).then(js=>{ renderBrokerBox(js); }).catch(()=>{});
-  });
+  // --- Poll for updates ---
+  function pollPositions(){
+    fetch('/get_positions').then(r=>r.json()).then(js=>{
+      renderPositionsList(js.open || []);
+      localStorage.setItem(POS_KEY, JSON.stringify(js));
+    }).catch(()=>{});
+  }
+  function pollBalance(){
+    fetch('/get_real_wallet').then(r=>r.json()).then(js=>{
+      renderBrokerBox(js);
+      localStorage.setItem(BAL_KEY, JSON.stringify(js));
+    }).catch(()=>{});
+  }
+  pollPositions(); pollBalance();
+  setInterval(pollPositions, 7000); // every 7 seconds
+  setInterval(pollBalance, 15000); // every 15 seconds
+});
 </script>
 {% endblock %}

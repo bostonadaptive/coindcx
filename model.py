@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
 
@@ -55,7 +55,7 @@ class Watchlist(db.Model):
 class TradeHistory(db.Model):
     __tablename__ = "trade_history"
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     symbol = db.Column(db.String(50), nullable=False)
     direction = db.Column(db.String(10))  # LONG / SHORT
@@ -105,7 +105,7 @@ class ModeratorEarnings(db.Model):
     moderator_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     bonus_amount = db.Column(db.Float, default=0.0)
     bonus_type = db.Column(db.String(50))  # referral_bonus, withdrawal, etc.
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     moderator = db.relationship("User", backref="earnings")
 
@@ -132,7 +132,7 @@ class UserStrategySetup(db.Model):
     margin = db.Column(db.Float)
     timeframe = db.Column(db.String(50))
     is_active = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     # whether this strategy runs in paper (simulated) mode
     is_paper = db.Column(db.Boolean, default=False)
         
@@ -148,9 +148,8 @@ class StrategySignal(db.Model):
     entry_time = db.Column(db.DateTime)
     exit_price = db.Column(db.Float)
     exit_time = db.Column(db.DateTime)
-    # human-readable reason for exit (optional)
-    exit_reason = db.Column(db.String(200))
-    # human-readable reason for exit (optional)
+    # human-readable reason for entry/exit (optional)
+    entry_reason = db.Column(db.String(200))
     exit_reason = db.Column(db.String(200))
     gain_ratio = db.Column(db.Float)
 
@@ -176,7 +175,7 @@ class BacktestConfig(db.Model):
     end_date = db.Column(db.Date, nullable=False)
 
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 # ----------------- Backtest Run -----------------
@@ -201,7 +200,7 @@ class BacktestRun(db.Model):
     daily_json = db.Column(db.Text)  # dict {day: pnl}
     monthly_json = db.Column(db.Text)  # dict {month: pnl}
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     config = db.relationship("BacktestConfig", backref="runs")
     user = db.relationship("User", backref="backtest_runs")
@@ -232,8 +231,10 @@ class PaperTrade(db.Model):
     qty = db.Column(db.Float, default=0.0)
     entry_price = db.Column(db.Float)
     entry_time = db.Column(db.DateTime)
+    entry_reason = db.Column(db.String(200))
     exit_price = db.Column(db.Float)
     exit_time = db.Column(db.DateTime)
+    exit_reason = db.Column(db.String(200))
     margin = db.Column(db.Float, default=0.0)
     leverage = db.Column(db.Integer, default=1)
     locked_amount = db.Column(db.Float, default=0.0)
@@ -253,7 +254,7 @@ class MCPCache(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(200), unique=True, nullable=False, index=True)
     value_json = db.Column(db.Text)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return { 'key': self.key, 'value_json': self.value_json, 'updated_at': self.updated_at }

@@ -1,534 +1,878 @@
 {% extends 'admin/admin_dashboard.html' %}
 
 {% block content %}
-<h2>DB Control Board</h2>
-<p>Use this page to list/create/drop views and run read-only queries. Actions that modify schema are allowed (create/drop view) for admins.</p>
+<style>
+    /* Custom styles for the fixed/scrollable layout */
+    .dashboard-container {
+        display: flex;
+        height: calc(100vh - 120px); /* Adjust based on your admin_dashboard header/footer height */
+        padding: 0;
+    }
+    .sidebar-panel {
+        width: 320px; /* Slightly wider sidebar */
+        flex-shrink: 0;
+        overflow-y: auto;
+        border-right: 1px solid var(--bs-border-color); /* Bootstrap's default border color */
+        background-color: var(--bs-body-bg); /* Use Bootstrap's body background color */
+    }
+    .main-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* Contains the scrollable editor/results */
+    }
+    .query-editor-area {
+        height: 50%; /* 50% for editor, 50% for results */
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--bs-border-color);
+        padding: 1rem;
+        overflow-y: auto; /* Allow scrolling if query editor content overflows */
+    }
+    .result-panel-area {
+        flex-grow: 1;
+        padding: 1rem;
+        overflow-y: auto; /* Allow scrolling if results overflow */
+    }
+    /* Style for the fixed-height list groups */
+    .scrollable-list {
+        max-height: 200px; /* Adjusted height for denser sidebar */
+        overflow-y: auto;
+    }
+    .CodeMirror {
+        border: 1px solid var(--bs-border-color);
+        height: auto; /* CodeMirror adjusts to content initially */
+        min-height: 150px; /* Minimum height for the editor */
+    }
+    /* Hide the original textareas */
+    textarea[id="query_sql"], textarea[id="view_sql"] {
+        display: none;
+    }
+    /* Adjust buttons inside list groups for snippets */
+    .list-group-item.snippet {
+        text-align: left;
+        white-space: pre-wrap; /* Preserve whitespace and wrap */
+        font-family: monospace;
+    }
+</style>
 
-<div style="display:flex; gap:24px;">
-  <div style="flex:1;">
-    <h3>Existing Views</h3>
-    <button id="refresh_views">Refresh</button>
-    <ul id="views_list"></ul>
-    <h3 style="margin-top:18px">Tables & Views</h3>
-    <button id="refresh_tables">Refresh Tables</button>
-    <ul id="tables_list" style="max-height:400px; overflow:auto; padding-left:8px;"></ul>
-    <div style="margin-top:12px;border-top:1px solid #eee;padding-top:12px;">
-      <h5>Delete Row</h5>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <label>Table: <select id="delete_table_select"><option value="">-- select --</option></select></label>
-        <label>Column: <select id="delete_column_select"><option value="">-- select column --</option></select></label>
-        <label>Value: <input id="delete_value_input" type="text" style="width:160px"/></label>
-      </div>
-      <div style="margin-top:8px;">
-        <label>Type <strong>DELETE</strong> to confirm: <input id="delete_confirm_text" type="text" style="width:120px"/></label>
-        <button id="delete_row_btn" style="margin-left:8px;">Delete Row</button>
-      </div>
-      <small style="color:#a00">Requires Advanced mode enabled. This is destructive.</small>
-    </div>
-  </div>
-
-  <div style="flex:2;">
-      <!-- Options: Manual SQL or Table Explorer -->
-      <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
-        <label><input type="radio" name="db_mode" value="manual" id="mode_manual" checked/> Manual SQL (full control)</label>
-        <label><input type="radio" name="db_mode" value="table" id="mode_table"/> Table Explorer</label>
-      </div>
-
-      <!-- Table Explorer Panel (Option 2) -->
-      <div id="table_panel" style="display:none; border:1px solid #eee; padding:12px; margin-bottom:12px; background:#fafafa;">
-        <h4>Table Explorer</h4>
-        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
-          <label>Table: 
-            <select id="table_explorer_select"><option value="">-- select table --</option></select>
-          </label>
-          <button id="table_load_btn">Load Table</button>
-          <label>Per page: <input id="table_per_page" type="number" value="200" style="width:80px"/></label>
+<div class="container-fluid py-2">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0 text-primary">SQL Data Explorer <i class="bi bi-database-gear ms-2"></i></h2>
+        <div class="form-check form-switch me-3">
+            <input class="form-check-input" type="checkbox" id="advanced_toggle">
+            <label class="form-check-label text-danger fw-bold" for="advanced_toggle">
+                Advanced DDL (Dangerous)
+            </label>
         </div>
-        <div style="margin-bottom:8px;">
-          <button class="btn btn-sm btn-outline-primary op-btn" data-op="SELECT">SELECT</button>
-          <button class="btn btn-sm btn-outline-secondary op-btn" data-op="INSERT">INSERT</button>
-          <button class="btn btn-sm btn-outline-warning op-btn" data-op="UPDATE">UPDATE</button>
-          <button class="btn btn-sm btn-outline-danger op-btn" data-op="DELETE">DELETE</button>
-          <button class="btn btn-sm btn-outline-dark op-btn" data-op="ALTER">ALTER</button>
-          <button class="btn btn-sm btn-outline-danger op-btn" data-op="DROP">DROP</button>
+    </div>
+    
+    <div class="dashboard-container">
+        
+        <div class="sidebar-panel p-3">
+            <h5 class="text-secondary mb-3">Schema & Admin Tools</h5>
+
+            <div class="accordion accordion-flush" id="schemaAccordion">
+                
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTablesViews">
+                        <button class="accordion-button fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTablesViews" aria-expanded="true" aria-controls="collapseTablesViews">
+                            <i class="bi bi-table me-2"></i> Tables & Views
+                        </button>
+                    </h2>
+                    <div id="collapseTablesViews" class="accordion-collapse collapse show" aria-labelledby="headingTablesViews">
+                        <div class="accordion-body p-2">
+                            <div class="d-flex justify-content-around mb-2">
+                                <button id="refresh_tables" type="button" class="btn btn-sm btn-outline-primary me-1 flex-grow-1"><i class="bi bi-arrow-clockwise"></i> Tables</button>
+                                <button id="refresh_views" type="button" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-arrow-clockwise"></i> Views</button>
+                            </div>
+                            <small class="text-muted d-block mb-1">Click a table/view to explore</small>
+                            <ul id="tables_list" class="list-group list-group-flush border rounded scrollable-list">
+                                <li class="list-group-item small text-muted">Loading tables...</li>
+                            </ul>
+                            <hr class="my-2">
+                            <ul id="views_list" class="list-group list-group-flush border rounded scrollable-list">
+                                <li class="list-group-item small text-muted">Loading views...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingDelete">
+                        <button class="accordion-button collapsed fw-bold text-danger" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDelete" aria-expanded="false" aria-controls="collapseDelete">
+                            <i class="bi bi-trash-fill me-2"></i> Delete Row
+                        </button>
+                    </h2>
+                    <div id="collapseDelete" class="accordion-collapse collapse" aria-labelledby="headingDelete">
+                        <div class="accordion-body p-3">
+                            <small class="text-danger d-block mb-2">Requires Advanced mode enabled.</small>
+                            <form>
+                                <div class="mb-2">
+                                    <label for="delete_table_select" class="form-label small fw-bold">Table</label>
+                                    <select id="delete_table_select" class="form-select form-select-sm">
+                                        <option value="">-- select --</option>
+                                    </select>
+                                </div>
+                                <div class="mb-2">
+                                    <label for="delete_column_select" class="form-label small fw-bold">Column (WHERE)</label>
+                                    <select id="delete_column_select" class="form-select form-select-sm">
+                                        <option value="">-- select column --</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="delete_value_input" class="form-label small fw-bold">Value</label>
+                                    <input id="delete_value_input" type="text" class="form-control form-control-sm" placeholder="Value to match" />
+                                </div>
+                                <div class="mb-3">
+                                    <label for="delete_confirm_text" class="form-label small fw-bold text-danger">Type <strong class="text-uppercase">DELETE</strong> to confirm:</label>
+                                    <input id="delete_confirm_text" type="text" class="form-control form-control-sm border-danger" placeholder="DELETE" />
+                                </div>
+                                <button id="delete_row_btn" type="button" class="btn btn-danger btn-sm w-100" disabled>Delete Row</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTrigger">
+                        <button class="accordion-button collapsed fw-bold text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTrigger" aria-expanded="false" aria-controls="collapseTrigger">
+                            <i class="bi bi-lightning-charge-fill me-2"></i> Paper Trigger
+                        </button>
+                    </h2>
+                    <div id="collapseTrigger" class="accordion-collapse collapse" aria-labelledby="headingTrigger">
+                        <div class="accordion-body p-3">
+                            <div class="mb-2">
+                                <label for="manual_setup_select" class="form-label small fw-bold">Recent Setups</label>
+                                <select id="manual_setup_select" class="form-select form-select-sm">
+                                    <option value="">-- choose setup --</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="manual_config_id" class="form-label small fw-bold">or Config ID</label>
+                                <input id="manual_config_id" type="number" class="form-control form-control-sm" placeholder="ID" />
+                            </div>
+                            <button id="manual_trigger" type="button" class="btn btn-secondary btn-sm w-100">Trigger Paper</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
         </div>
-        <div><small>Select a table and click Load to populate rows; use operation buttons to open a popup and build a query.</small></div>
-      </div>
 
-      <!-- Manual SQL Panel (Option 1) -->
-      <div id="manual_panel">
-      <h3>Create / Replace View</h3>
-      <label>View name: <input id="view_name"/></label><br/>
-      <label>SQL (body only after AS):</label><br/>
-      <textarea id="view_sql" rows="8" style="width:100%"></textarea><br/>
-      <button id="create_view">Create / Replace View</button>
+        <div class="main-content">
+            
+            <div class="query-editor-area">
+                <ul class="nav nav-tabs mb-2" id="queryTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="query-tab" type="button" data-bs-toggle="tab" data-bs-target="#query-pane" aria-controls="query-pane" aria-selected="true"><i class="bi bi-terminal me-1"></i> Manual Query</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="view-tab" type="button" data-bs-toggle="tab" data-bs-target="#view-pane" aria-controls="view-pane" aria-selected="false"><i class="bi bi-eye-fill me-1"></i> View Builder</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="explorer-tab" type="button" data-bs-toggle="tab" data-bs-target="#explorer-pane" aria-controls="explorer-pane" aria-selected="false"><i class="bi bi-list-columns-reverse me-1"></i> Query Builder</button>
+                    </li>
+                </ul>
 
-    <h3>Drop View</h3>
-    <input id="drop_view_name" placeholder="view_name"/>
-    <button id="drop_view">Drop View</button>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="query-pane" role="tabpanel" aria-labelledby="query-tab">
+                        <textarea id="query_sql" rows="8" class="form-control font-monospace mb-3" placeholder="Enter your SQL query (e.g., SELECT * FROM users LIMIT 100)"></textarea>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button id="run_query" type="button" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-2"></i> Run Query</button>
+                            <button id="help_btn" type="button" class="btn btn-outline-secondary btn-sm"><i class="bi bi-info-circle-fill me-1"></i> SQL Help & Snippets</button>
+                        </div>
+                    </div>
 
-    <h3>Run Query</h3>
-    <div style="margin-bottom:8px;">
-      <label><input type="checkbox" id="advanced_toggle"/> Enable advanced DDL (CREATE/ALTER/DROP) — <strong>Dangerous</strong></label>
+                    <div class="tab-pane fade" id="view-pane" role="tabpanel" aria-labelledby="view-tab">
+                        <h6 class="text-secondary mb-3">Create / Replace View</h6>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">View Name</span>
+                            <input id="view_name" type="text" class="form-control" placeholder="new_view_name" />
+                            <button id="create_view" type="button" class="btn btn-success"><i class="bi bi-plus-square"></i> Create</button>
+                        </div>
+                        <label for="view_sql" class="form-label small fw-bold">SQL (body only after AS)</label>
+                        <textarea id="view_sql" rows="4" class="form-control font-monospace mb-3" placeholder="SELECT user_id, name FROM users WHERE active = 1"></textarea>
+                        
+                        <h6 class="text-secondary mt-4 mb-3">Drop View</h6>
+                        <div class="input-group">
+                            <input id="drop_view_name" type="text" class="form-control" placeholder="view_name to drop" />
+                            <button id="drop_view" type="button" class="btn btn-warning"><i class="bi bi-x-octagon"></i> Drop</button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-pane fade" id="explorer-pane" role="tabpanel" aria-labelledby="explorer-tab">
+                        <div class="d-flex gap-3 align-items-end mb-3">
+                            <div class="flex-grow-1">
+                                <label for="table_explorer_select" class="form-label small fw-bold">Select Table</label>
+                                <select id="table_explorer_select" class="form-select form-select-sm">
+                                    <option value="">-- select table --</option>
+                                </select>
+                            </div>
+                            <button id="table_load_btn" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-download"></i> Load Data</button>
+                            <div class="input-group input-group-sm w-auto">
+                                <span class="input-group-text">Per page:</span>
+                                <input id="table_per_page" type="number" value="200" class="form-control" style="width: 70px" />
+                            </div>
+                        </div>
+                        <h6 class="mb-3 text-secondary">Build Query with Operations:</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-success btn-sm op-btn" type="button" data-op="SELECT"><i class="bi bi-search"></i> SELECT</button>
+                            <button class="btn btn-secondary btn-sm op-btn" type="button" data-op="INSERT"><i class="bi bi-file-earmark-plus"></i> INSERT</button>
+                            <button class="btn btn-warning btn-sm op-btn" type="button" data-op="UPDATE"><i class="bi bi-pencil-square"></i> UPDATE</button>
+                            <button class="btn btn-danger btn-sm op-btn" type="button" data-op="DELETE"><i class="bi bi-trash"></i> DELETE</button>
+                            <button class="btn btn-info btn-sm op-btn" type="button" data-op="ALTER"><i class="bi bi-wrench"></i> ALTER</button>
+                            <button class="btn btn-dark btn-sm op-btn" type="button" data-op="DROP"><i class="bi bi-x-circle-fill"></i> DROP</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="result-panel-area">
+                <h5 class="mb-3 text-secondary">Query Results</h5>
+                <div id="result_table_wrap" class="table-responsive border rounded p-2 bg-white h-100">
+                    <table id="result_table" class="table table-sm table-hover table-striped mb-0">
+                        <thead id="result_head" class="table-dark"></thead>
+                        <tbody id="result_body"></tbody>
+                    </table>
+                </div>
+                
+                <div id="pagination_controls" class="d-flex justify-content-between align-items-center mt-3 small text-muted">
+                    <div class="d-flex gap-2">
+                         <button id="prev_page" type="button" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left-short"></i> Prev</button>
+                         <button id="next_page" type="button" class="btn btn-outline-secondary btn-sm">Next <i class="bi bi-arrow-right-short"></i></button>
+                    </div>
+                    <span>Page <span id="cur_page" class="fw-bold">1</span> | <span id="total_count">0 rows</span></span>
+                    <div>
+                        <input id="per_page" type="number" value="200" class="form-control form-control-sm d-inline-block" style="width: 80px" />
+                        <button id="export_csv" type="button" class="btn btn-outline-success btn-sm ms-2"><i class="bi bi-file-earmark-spreadsheet-fill"></i> Export CSV</button>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
     </div>
-    <div style="margin-bottom:8px;">
-      <button id="help_btn" class="btn btn-sm btn-outline-secondary">SQL Help & Snippets</button>
-    </div>
-    <textarea id="query_sql" rows="6" style="width:100%"></textarea><br/>
-    <div style="margin:6px 0; display:flex; gap:8px; align-items:center;">
-      <button id="run_query">Run Query</button>
-      <label>Per page: <input id="per_page" type="number" value="200" style="width:80px"/></label>
-      <button id="export_csv">Export CSV</button>
-    </div>
-
-    <h4>Manual Paper Trigger</h4>
-    <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-      <label>Recent Setups: 
-        <select id="manual_setup_select" style="width:320px">
-          <option value="">-- choose setup --</option>
-        </select>
-      </label>
-      <label>or Config ID: <input id="manual_config_id" type="number" style="width:120px"/></label>
-      <button id="manual_trigger">Trigger Paper</button>
-    </div>
-
-    <h3>Result</h3>
-    <div id="result_table_wrap">
-      <table id="result_table" class="table table-sm table-striped">
-        <thead id="result_head"></thead>
-        <tbody id="result_body"></tbody>
-      </table>
-      <div id="pagination_controls" style="display:flex; gap:8px; align-items:center;">
-        <button id="prev_page">Prev</button>
-        <span>Page <span id="cur_page">1</span></span>
-        <button id="next_page">Next</button>
-        <span id="total_count" style="margin-left:12px"></span>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- Operation Modal: build and preview SQL for the chosen operation -->
-<div class="modal" tabindex="-1" id="operationModal">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="operationModalTitle">Operation</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div id="operation_help" style="margin-bottom:8px;color:#333;"></div>
-        <div style="margin-bottom:8px;">
-          <label>Columns: <select id="op_columns_select" multiple style="min-width:300px; height:100px"></select></label>
+<div class="modal fade" tabindex="-1" id="operationModal" aria-labelledby="operationModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="operationModalTitle">SQL Operation Builder</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="operation_help" class="alert alert-info small" role="alert"></div>
+                <form class="row g-3">
+                    <div class="col-md-6">
+                        <label for="op_columns_select" class="form-label fw-bold">Columns (Select, Insert, Update)</label>
+                        <select id="op_columns_select" class="form-select" multiple style="min-width: 300px; height: 150px"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label for="op_limit" class="form-label fw-bold">Limit Records</label>
+                                <input id="op_limit" type="number" value="100" class="form-control" style="width: 100px" />
+                            </div>
+                            <div class="col-12 mt-3">
+                                <label class="form-label fw-bold">WHERE Clause Builder</label>
+                                <div class="input-group">
+                                    <select id="op_where_col" class="form-select">
+                                        <option value="">-- column --</option>
+                                    </select>
+                                    <select id="op_where_op" class="form-select flex-grow-0" style="width: auto;">
+                                        <option>=</option>
+                                        <option>!=</option>
+                                        <option>&lt;</option>
+                                        <option>&lt;=</option>
+                                        <option>&gt;</option>
+                                        <option>&gt;=</option>
+                                        <option>LIKE</option>
+                                    </select>
+                                    <input id="op_where_val" type="text" class="form-control" placeholder="Value" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label for="op_sql_textarea" class="form-label fw-bold">SQL Preview (Review/Edit before Run)</label>
+                        <textarea id="op_sql_textarea" rows="6" class="form-control font-monospace"></textarea>
+                    </div>
+                    <div id="op_confirm_wrap" class="col-12" style="display:none;">
+                        <small class="text-danger fw-bold"><i class="bi bi-shield-fill-exclamation"></i> DESTRUCTIVE OPERATION. Type the operation name (e.g., DELETE or DROP) to confirm:</small>
+                        <input id="op_confirm_text" type="text" class="form-control" style="width: 180px" />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="op_preview_btn" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-text-fill me-1"></i> Preview</button>
+                <button type="button" id="op_run_btn" class="btn btn-primary"><i class="bi bi-play-fill me-1"></i> Run</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
-        <div style="margin-bottom:8px;">
-          <label>Where (column): <select id="op_where_col"><option value="">-- none --</option></select></label>
-          <label style="margin-left:8px">Operator: <select id="op_where_op"><option>=</option><option>!=</option><option>&lt;</option><option>&lt;=</option><option>&gt;</option><option>&gt;=</option><option>LIKE</option></select></label>
-          <label style="margin-left:8px">Value: <input id="op_where_val" type="text" style="width:160px"/></label>
-        </div>
-        <div style="margin-bottom:8px;">
-          <label>Limit: <input id="op_limit" type="number" value="100" style="width:100px"/></label>
-        </div>
-        <div>
-          <label>SQL Preview (edit before run):</label>
-          <textarea id="op_sql_textarea" rows="6" style="width:100%"></textarea>
-        </div>
-        <div id="op_confirm_wrap" style="margin-top:8px; display:none;">
-          <small style="color:#a00">This operation is destructive. Type the operation name (e.g., DELETE or DROP) to confirm:</small>
-          <input id="op_confirm_text" type="text" style="width:160px; margin-left:8px"/>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" id="op_preview_btn" class="btn btn-secondary">Preview</button>
-        <button type="button" id="op_run_btn" class="btn btn-primary">Run</button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
     </div>
-  </div>
 </div>
 
+<div class="modal fade" tabindex="-1" id="sqlHelpModal" aria-labelledby="sqlHelpModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="sqlHelpModalTitle">SQL Help & Snippets</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="sqlHelpModalBody">
+                <p>Click a snippet to insert it into the editor. Edit before running.</p>
+                <div class="list-group">
+                    <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT * FROM sqlite_master WHERE type='table'">List tables</button>
+                    <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT name, sql FROM sqlite_master WHERE type='view'">List views</button>
+                    <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT * FROM paper_trades ORDER BY entry_time DESC LIMIT 100">Recent paper_trades</button>
+                    <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT user_id, symbol, SUM(pnl_inr) as total_pnl FROM paper_trades GROUP BY user_id, symbol ORDER BY total_pnl DESC">Pnl by user & symbol</button>
+                    <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT config_id, COUNT(*) as open_positions FROM paper_trades WHERE status='OPEN' GROUP BY config_id">Open positions per config</button>
+                    <button type="button" class="list-group-item list-group-item-action snippet" data-snip="-- Example create view\nCREATE VIEW my_recent_trades AS SELECT id, user_id, symbol, entry_price, entry_time FROM paper_trades WHERE status='OPEN'">Create view example</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// replace textarea with CodeMirror instance
+let cm = CodeMirror.fromTextArea(document.getElementById('query_sql'), {
+    mode:'text/x-sql', 
+    lineNumbers:true, 
+    theme:'default',
+    indentWithTabs: true,
+    smartIndent: true,
+    tabSize: 4,
+    indentUnit: 4,
+    extraKeys: {"Ctrl-Space": "autocomplete"} // Example for autocomplete, needs more setup
+});
+// Ensure CodeMirror adapts to its container size changes
+const queryEditorArea = document.querySelector('.query-editor-area');
+new ResizeObserver(() => {
+    cm.refresh();
+}).observe(queryEditorArea);
+
+// This is a placeholder for `view_sql` which was also a textarea.
+// If you want CodeMirror for `view_sql` as well, initialize it similarly:
+// let viewCm = CodeMirror.fromTextArea(document.getElementById('view_sql'), {
+//     mode:'text/x-sql', 
+//     lineNumbers:true, 
+//     theme:'default',
+//     indentWithTabs: true,
+//     smartIndent: true,
+//     tabSize: 4,
+//     indentUnit: 4,
+// });
+
+
+// --- All Original JavaScript Functions Follow, with minor UI-related adjustments ---
+
+// Original functions (fetchViews, fetchTables, showTableOperations, showOperationSnippets, etc.)
+// are preserved and adapted to the new HTML structure.
+
 async function fetchViews(){
-  const res = await fetch('/admin/db_control/views');
-  const js = await res.json();
-  const list = document.getElementById('views_list');
-  list.innerHTML = '';
-  if(js.error){ list.innerText = 'Error: '+js.error; return; }
-  js.forEach(v=>{
-    const li = document.createElement('li');
-    const pre = document.createElement('pre'); pre.textContent = v.sql || '';
-    li.innerHTML = `<strong>${v.name}</strong> `;
-    li.appendChild(pre);
-    list.appendChild(li);
-  });
+    const list = document.getElementById('views_list');
+    list.innerHTML = '<li class="list-group-item small text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading views...</li>';
+    try {
+        const res = await fetch('/admin/db_control/views');
+        const js = await res.json();
+        list.innerHTML = '';
+        if(js.error){ list.innerHTML = `<li class="list-group-item small text-danger">Error: ${js.error}</li>`; return; }
+        if (js.length === 0) { list.innerHTML = '<li class="list-group-item small text-muted">No views found.</li>'; }
+        js.forEach(v=>{
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action small';
+            li.innerHTML = `<strong>${v.name}</strong>`;
+            li.title = v.sql ? v.sql : ''; // Use title for hover SQL preview
+            li.addEventListener('click', () => {
+                // Populate view builder for edit/drop
+                document.getElementById('view_name').value = v.name;
+                // If using CodeMirror for view_sql: viewCm.setValue(v.sql || '');
+                document.getElementById('view_sql').value = v.sql || '';
+                document.getElementById('drop_view_name').value = v.name;
+                // Switch to view builder tab
+                const viewTab = new bootstrap.Tab(document.getElementById('view-tab'));
+                viewTab.show();
+            });
+            list.appendChild(li);
+        });
+    } catch(e) {
+        list.innerHTML = `<li class="list-group-item small text-danger">Failed to load views: ${e.message}</li>`;
+        console.error('Failed to fetch views:', e);
+    }
 }
 
 document.getElementById('refresh_views').addEventListener('click', fetchViews);
 
 async function fetchTables(){
-  try{
-    const res = await fetch('/admin/list_tables');
-    const js = await res.json();
     const list = document.getElementById('tables_list');
-    list.innerHTML = '';
-    if(js.error){ list.innerText = 'Error: '+js.error; return; }
-    js.forEach(t=>{
-      const li = document.createElement('li');
-      li.style.cursor = 'pointer';
-      li.style.padding = '6px 4px';
-      li.innerHTML = `<strong>${t.name}</strong> <small style='color:#666'>[${t.type}]</small>`;
-      li.addEventListener('click', ()=>{ showTableOperations(t.name); });
-      list.appendChild(li);
-    });
-  }catch(e){ console.log('tables fetch failed', e); }
+    list.innerHTML = '<li class="list-group-item small text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Loading tables...</li>';
+    try{
+        const res = await fetch('/admin/list_tables');
+        const js = await res.json();
+        list.innerHTML = '';
+        if(js.error){ list.innerHTML = `<li class="list-group-item small text-danger">Error: ${js.error}</li>`; return; }
+        if (js.length === 0) { list.innerHTML = '<li class="list-group-item small text-muted">No tables found.</li>'; }
+        js.forEach(t=>{
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action small';
+            li.style.cursor = 'pointer';
+            li.innerHTML = `<strong>${t.name}</strong> <small class='text-muted'>[${t.type}]</small>`;
+            li.addEventListener('click', ()=>{ showTableInExplorer(t.name); });
+            list.appendChild(li);
+        });
+    }catch(e){ 
+        list.innerHTML = `<li class="list-group-item small text-danger">Failed to load tables: ${e.message}</li>`;
+        console.error('tables fetch failed', e); 
+    }
 }
 
 document.getElementById('refresh_tables').addEventListener('click', fetchTables);
 
-function showTableOperations(tableName){
-  // show a small modal or prompt for operation selection
-  const ops = ['SELECT','INSERT','UPDATE','DELETE'];
-  const body = document.getElementById('sqlHelpModalBody');
-  body.innerHTML = '';
-  const h = document.createElement('h6'); h.textContent = `Table: ${tableName}`; body.appendChild(h);
-  const p = document.createElement('p'); p.textContent = 'Choose an operation to insert a sample statement into the editor:'; body.appendChild(p);
-  ops.forEach(op=>{
-    const btn = document.createElement('button'); btn.className='list-group-item list-group-item-action snippet';
-    btn.textContent = op;
-    btn.style.marginRight='6px';
-    btn.addEventListener('click', ()=>{ showOperationSnippets(op, tableName); });
-    body.appendChild(btn);
-  });
-  const modal = new bootstrap.Modal(document.getElementById('sqlHelpModal'));
-  modal.show();
-}
-
-function showOperationSnippets(op, tableName){
-  const body = document.getElementById('sqlHelpModalBody');
-  body.innerHTML = '';
-  const title = document.createElement('h6'); title.textContent = `${op} snippets for ${tableName}`; body.appendChild(title);
-  const list = document.createElement('div'); list.className = 'list-group';
-
-  const snippets = {
-    'SELECT': [
-      `SELECT * FROM ${tableName} LIMIT 100`,
-      `SELECT * FROM ${tableName} WHERE id = 123`,
-      `SELECT t1.*, t2.* FROM ${tableName} t1 JOIN other_table t2 ON t1.some_id = t2.id WHERE t1.some_col = 'value'`,
-      `SELECT COUNT(*) as cnt, some_col FROM ${tableName} GROUP BY some_col ORDER BY cnt DESC`
-    ],
-    'INSERT': [
-      `INSERT INTO ${tableName} (col1, col2) VALUES ('val1', 123)`
-    ],
-    'UPDATE': [
-      `UPDATE ${tableName} SET col1 = 'new' WHERE id = 123`,
-      `-- Remember to include WHERE clause to avoid updating all rows`
-    ],
-    'DELETE': [
-      `DELETE FROM ${tableName} WHERE id = 123`,
-      `-- Use with caution: DELETE without WHERE will remove all rows`
-    ]
-  };
-
-  (snippets[op]||[]).forEach(s=>{
-    const b = document.createElement('button'); b.className='list-group-item list-group-item-action snippet';
-    b.textContent = s;
-    b.addEventListener('click', ()=>{ cm.setValue(s); const modal = bootstrap.Modal.getInstance(document.getElementById('sqlHelpModal')); if(modal) modal.hide(); });
-    list.appendChild(b);
-  });
-  body.appendChild(list);
+function showTableInExplorer(tableName){
+    // Switch to Query Builder tab
+    const explorerTab = new bootstrap.Tab(document.getElementById('explorer-tab'));
+    explorerTab.show();
+    document.getElementById('table_explorer_select').value = tableName;
+    // You might also want to trigger table_load_btn.click() here if desired
 }
 
 // initial table load
 fetchTables();
+fetchViews(); // Also fetch views on initial load
 
 // populate delete table select when tables are loaded
 async function populateDeleteTableSelect(){
-  try{
-    const res = await fetch('/admin/list_tables');
-    const js = await res.json();
-    const sel = document.getElementById('delete_table_select');
-    sel.innerHTML = '<option value="">-- select --</option>';
-    if(Array.isArray(js)){
-      js.forEach(t=>{
-        const opt = document.createElement('option'); opt.value = t.name; opt.text = t.name;
-        sel.appendChild(opt);
-      });
-    }
-  }catch(e){ console.log('populate delete select failed', e); }
+    try{
+        const res = await fetch('/admin/list_tables');
+        const js = await res.json();
+        const sel = document.getElementById('delete_table_select');
+        sel.innerHTML = '<option value="">-- select --</option>';
+        if(Array.isArray(js)){
+            js.forEach(t=>{
+                const opt = document.createElement('option'); opt.value = t.name; opt.text = t.name;
+                sel.appendChild(opt);
+            });
+        }
+    }catch(e){ console.error('populate delete select failed', e); }
 }
 populateDeleteTableSelect();
 
 // when table select changes, fetch columns for that table and populate column select
 document.getElementById('delete_table_select').addEventListener('change', async (e)=>{
-  const table = e.target.value;
-  const colSel = document.getElementById('delete_column_select');
-  colSel.innerHTML = '<option value="">-- select column --</option>';
-  if(!table) return;
-  try{
-    const res = await fetch(`/admin/table_info/${encodeURIComponent(table)}`);
-    const js = await res.json();
-    if(js.error){ console.log('table_info error', js.error); return; }
-    js.forEach(c=>{
-      const opt = document.createElement('option'); opt.value = c.name; opt.text = `${c.name} (${c.type||'?'})${c.pk? ' [pk]':''}`;
-      colSel.appendChild(opt);
-    });
-  }catch(err){ console.log('failed to load table_info', err); }
+    const table = e.target.value;
+    const colSel = document.getElementById('delete_column_select');
+    colSel.innerHTML = '<option value="">-- select column --</option>';
+    if(!table) return;
+    try{
+        const res = await fetch(`/admin/table_info/${encodeURIComponent(table)}`);
+        const js = await res.json();
+        if(js.error){ console.error('table_info error', js.error); return; }
+        js.forEach(c=>{
+            const opt = document.createElement('option'); opt.value = c.name; opt.text = `${c.name} (${c.type||'?'})${c.pk? ' [pk]':''}`;
+            colSel.appendChild(opt);
+        });
+    }catch(err){ console.error('failed to load table_info', err); }
 });
 
+const deleteConfirmText = document.getElementById('delete_confirm_text');
+const deleteRowBtn = document.getElementById('delete_row_btn');
+const advancedToggle = document.getElementById('advanced_toggle');
+
+function updateDeleteButtonState() {
+    const isConfirmed = deleteConfirmText.value.toUpperCase() === 'DELETE';
+    const isAdvanced = advancedToggle.checked;
+    
+    // Original logic checked for 'id' as well, adapted for generic column/value
+    const tableSelected = document.getElementById('delete_table_select').value;
+    const colSelected = document.getElementById('delete_column_select').value;
+    const valueEntered = document.getElementById('delete_value_input').value.trim() !== '';
+
+    if (isConfirmed && isAdvanced && tableSelected && colSelected && valueEntered) {
+        deleteRowBtn.disabled = false;
+    } else {
+        deleteRowBtn.disabled = true;
+    }
+}
+
+deleteConfirmText.addEventListener('input', updateDeleteButtonState);
+document.getElementById('delete_table_select').addEventListener('change', updateDeleteButtonState);
+document.getElementById('delete_column_select').addEventListener('change', updateDeleteButtonState);
+document.getElementById('delete_value_input').addEventListener('input', updateDeleteButtonState);
+advancedToggle.addEventListener('change', updateDeleteButtonState);
+
+// Initialize state on load
+updateDeleteButtonState();
+
 document.getElementById('delete_row_btn').addEventListener('click', async ()=>{
-  const table = document.getElementById('delete_table_select').value;
-  const col = document.getElementById('delete_column_select').value;
-  const val = document.getElementById('delete_value_input').value;
-  const confirmTxt = document.getElementById('delete_confirm_text').value || '';
-  if(!table || (!col || val === undefined || val === '')){ alert('Select table, column and enter a value'); return; }
-  if(confirmTxt.trim().toUpperCase() !== 'DELETE'){ alert('Type DELETE to confirm'); return; }
-  if(!confirm(`Delete row id=${id} from ${table}? This cannot be undone.`)) return;
-  // call API
-  // call API with column+value
-  const res = await fetch('/admin/db_control/delete_row', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({table: table, column: col, value: val})});
-  const js = await res.json();
-  if(js.error){ alert('Error: '+js.error); return; }
-  alert('Deleted rows: '+(js.deleted||js.deleted_count||js.deleted_rows||js.deleted_rows_count||js.deleted||0));
-  // refresh listings
-  fetchTables(); populateDeleteTableSelect(); fetchViews();
+    const table = document.getElementById('delete_table_select').value;
+    const col = document.getElementById('delete_column_select').value;
+    const val = document.getElementById('delete_value_input').value;
+    const confirmTxt = document.getElementById('delete_confirm_text').value || '';
+    if(!table || (!col || val === undefined || val === '')){ alert('Select table, column and enter a value'); return; }
+    if(confirmTxt.trim().toUpperCase() !== 'DELETE'){ alert('Type DELETE to confirm'); return; }
+    if(!confirm(`Delete rows from ${table} WHERE ${col} = '${val}'? This cannot be undone.`)) return;
+    // call API
+    const res = await fetch('/admin/db_control/delete_row', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({table: table, column: col, value: val})});
+    const js = await res.json();
+    if(js.error){ alert('Error: '+js.error); return; }
+    alert('Deleted rows: '+(js.deleted||js.deleted_count||js.deleted_rows||js.deleted_rows_count||0));
+    // refresh listings
+    fetchTables(); populateDeleteTableSelect(); fetchViews();
 });
 
 document.getElementById('create_view').addEventListener('click', async ()=>{
-  const name = document.getElementById('view_name').value;
-  const sql = document.getElementById('view_sql').value;
-  const res = await fetch('/admin/db_control/create_view', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({view_name:name, view_sql:sql})});
-  const js = await res.json();
-  if(js.success){ alert('View created'); fetchViews(); } else { alert('Error: '+(js.error||'unknown')); }
+    const name = document.getElementById('view_name').value;
+    const sql = document.getElementById('view_sql').value; // if using CodeMirror: viewCm.getValue();
+    if (!name.trim() || !sql.trim()) { alert('View name and SQL body cannot be empty.'); return; }
+
+    const res = await fetch('/admin/db_control/create_view', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({view_name:name, view_sql:sql})});
+    const js = await res.json();
+    if(js.success){ alert('View created/replaced successfully!'); fetchViews(); } else { alert('Error: '+(js.error||'unknown')); }
 });
 
 document.getElementById('drop_view').addEventListener('click', async ()=>{
-  const name = document.getElementById('drop_view_name').value;
-  const res = await fetch('/admin/db_control/drop_view', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({view_name:name})});
-  const js = await res.json();
-  if(js.success){ alert('Dropped'); fetchViews(); } else { alert('Error: '+(js.error||'unknown')); }
+    const name = document.getElementById('drop_view_name').value;
+    if (!name.trim()) { alert('View name to drop cannot be empty.'); return; }
+    if(!confirm(`Are you sure you want to DROP view "${name}"? This cannot be undone.`)) return;
+
+    const res = await fetch('/admin/db_control/drop_view', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({view_name:name})});
+    const js = await res.json();
+    if(js.success){ alert('View dropped successfully!'); fetchViews(); } else { alert('Error: '+(js.error||'unknown')); }
 });
 
 document.getElementById('run_query').addEventListener('click', async ()=>{
-  const sql = cm.getValue();
-  const per_page = parseInt(document.getElementById('per_page').value||200);
-  const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql:sql, page: 1, per_page: per_page})});
-  const js = await res.json();
-  renderResult(js, 1, per_page);
+    const sql = cm.getValue();
+    if (!sql.trim()) { alert('SQL query cannot be empty.'); return; }
+    const per_page = parseInt(document.getElementById('per_page').value||200);
+    const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql:sql, page: 1, per_page: per_page})});
+    const js = await res.json();
+    renderResult(js, 1, per_page);
 });
 
 document.getElementById('export_csv').addEventListener('click', async ()=>{
-  const sql = cm.getValue();
-  const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql:sql, export_csv:true})});
-  const js = await res.json();
-  if(js.error){ alert('Error: '+js.error); return; }
-  if(js.csv){
-    const blob = new Blob([js.csv], {type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'query_export.csv'; a.click(); URL.revokeObjectURL(url);
-    if(js.truncated){ alert('Export truncated to server cap.'); }
-  } else { alert('No csv returned'); }
+    const sql = cm.getValue();
+    if (!sql.trim()) { alert('SQL query cannot be empty for export.'); return; }
+    const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql:sql, export_csv:true})});
+    const js = await res.json();
+    if(js.error){ alert('Error: '+js.error); return; }
+    if(js.csv){
+        const blob = new Blob([js.csv], {type:'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'query_export.csv'; a.click(); URL.revokeObjectURL(url);
+        if(js.truncated){ alert('Export truncated to server cap.'); }
+    } else { alert('No CSV data returned for export.'); }
 });
 
 function renderResult(js, page, per_page){
-  const head = document.getElementById('result_head');
-  const body = document.getElementById('result_body');
-  const cur_page = document.getElementById('cur_page');
-  const total_count = document.getElementById('total_count');
-  if(js.error){ head.innerHTML=''; body.innerHTML = '<tr><td colspan="99">Error: '+js.error+'</td></tr>'; return; }
-  const cols = js.columns || [];
-  const rows = js.rows || [];
-  head.innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
-  body.innerHTML = rows.map(r=>'<tr>'+r.map(c=>`<td>${String(c==null?'':c)}</td>`).join('')+'</tr>').join('');
-  cur_page.textContent = page;
-  if(js.count){ total_count.textContent = `Total: ${js.count}`; } else { total_count.textContent = ''; }
-  // prev/next handlers
-  document.getElementById('prev_page').onclick = async ()=>{ if(page<=1) return; const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: cm.getValue(), page: page-1, per_page: per_page})}); const j = await res.json(); renderResult(j, page-1, per_page); };
-  document.getElementById('next_page').onclick = async ()=>{ if(js.count && page*per_page >= js.count) return; const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: cm.getValue(), page: page+1, per_page: per_page})}); const j = await res.json(); renderResult(j, page+1, per_page); };
+    const head = document.getElementById('result_head');
+    const body = document.getElementById('result_body');
+    const cur_page = document.getElementById('cur_page');
+    const total_count = document.getElementById('total_count');
+    const prevPageBtn = document.getElementById('prev_page');
+    const nextPageBtn = document.getElementById('next_page');
+
+    if(js.error){ 
+        head.innerHTML=''; 
+        body.innerHTML = `<tr><td colspan="99" class="text-danger text-center">Error: ${js.error}</td></tr>`; 
+        cur_page.textContent = '1'; total_count.textContent = '0 rows';
+        prevPageBtn.disabled = true; nextPageBtn.disabled = true;
+        return; 
+    }
+    const cols = js.columns || [];
+    const rows = js.rows || [];
+    head.innerHTML = '<tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+    if (rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="99" class="text-muted text-center">No results found.</td></tr>';
+    } else {
+        body.innerHTML = rows.map(r=>'<tr>'+r.map(c=>`<td title="${String(c==null?'':c)}">${String(c==null?'':c)}</td>`).join('')+'</tr>').join('');
+    }
+    
+    cur_page.textContent = page;
+    if(js.count !== undefined){ total_count.textContent = `Total: ${js.count} rows`; } else { total_count.textContent = ''; }
+    
+    // Update pagination button states
+    prevPageBtn.disabled = (page <= 1);
+    nextPageBtn.disabled = (js.count === undefined || page * per_page >= js.count || rows.length < per_page); // Disable if on last page or fewer results than per_page
+    
+    // prev/next handlers
+    prevPageBtn.onclick = async ()=>{ 
+        if(page<=1) return; 
+        const currentSql = cm.getValue(); // Get current SQL from CodeMirror
+        const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: currentSql, page: page-1, per_page: per_page})}); 
+        const j = await res.json(); 
+        renderResult(j, page-1, per_page); 
+    };
+    nextPageBtn.onclick = async ()=>{ 
+        if(js.count && page*per_page >= js.count) return; 
+        const currentSql = cm.getValue(); // Get current SQL from CodeMirror
+        const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: currentSql, page: page+1, per_page: per_page})}); 
+        const j = await res.json(); 
+        renderResult(j, page+1, per_page); 
+    };
 }
 
-// initial load
-fetchViews();
-</script>
+// --- Table Explorer & Operation modal wiring ---
 
-<script>
-// Table Explorer & Operation modal wiring
-function showManualMode(){ document.getElementById('manual_panel').style.display=''; document.getElementById('table_panel').style.display='none'; }
-function showTableMode(){ document.getElementById('manual_panel').style.display='none'; document.getElementById('table_panel').style.display=''; loadExplorerTables(); }
-document.getElementById('mode_manual').addEventListener('change', showManualMode);
-document.getElementById('mode_table').addEventListener('change', showTableMode);
+// Note: The original script used radio buttons and toggled display:none.
+// With Bootstrap tabs, the display logic is handled automatically by Bootstrap's JS.
+// We just need to ensure the correct tab is activated and relevant data loaded.
+
+// Explorer tab activation listener (for initial data loading if needed)
+document.getElementById('explorer-tab').addEventListener('shown.bs.tab', loadExplorerTables);
+
 
 async function loadExplorerTables(){
-  try{
-    const res = await fetch('/admin/list_tables');
-    const js = await res.json();
-    const sel = document.getElementById('table_explorer_select');
-    sel.innerHTML = '<option value="">-- select table --</option>';
-    if(Array.isArray(js)) js.forEach(t=>{ const opt = document.createElement('option'); opt.value=t.name; opt.text=t.name; sel.appendChild(opt); });
-  }catch(e){ console.log('loadExplorerTables failed', e); }
+    try{
+        const res = await fetch('/admin/list_tables');
+        const js = await res.json();
+        const sel = document.getElementById('table_explorer_select');
+        sel.innerHTML = '<option value="">-- select table --</option>';
+        if(Array.isArray(js)) js.forEach(t=>{ const opt = document.createElement('option'); opt.value=t.name; opt.text=t.name; sel.appendChild(opt); });
+    }catch(e){ console.error('loadExplorerTables failed', e); }
 }
 
 document.getElementById('table_load_btn').addEventListener('click', async ()=>{
-  const tbl = document.getElementById('table_explorer_select').value;
-  if(!tbl){ alert('Select a table'); return; }
-  const per = parseInt(document.getElementById('table_per_page').value||200);
-  const sql = `SELECT * FROM "${tbl}"`;
-  const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql:sql, page:1, per_page: per})});
-  const js = await res.json(); renderResult(js, 1, per);
+    const tbl = document.getElementById('table_explorer_select').value;
+    if(!tbl){ alert('Select a table'); return; }
+    const per = parseInt(document.getElementById('table_per_page').value||200);
+    const sql = `SELECT * FROM "${tbl}"`;
+    // Update CodeMirror with the SQL for consistency, then run
+    cm.setValue(sql); 
+    const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql:sql, page:1, per_page: per})});
+    const js = await res.json(); renderResult(js, 1, per);
 });
 
 // Operation buttons
 document.querySelectorAll('.op-btn').forEach(b=> b.addEventListener('click', async (e)=>{
-  const op = e.currentTarget.getAttribute('data-op');
-  const tbl = document.getElementById('table_explorer_select').value;
-  if(!tbl){ alert('Select a table first'); return; }
-  try{
-    const res = await fetch(`/admin/table_info/${encodeURIComponent(tbl)}`);
-    const cols = await res.json(); if(cols.error){ alert('Error: '+cols.error); return; }
-    const colsSel = document.getElementById('op_columns_select'); colsSel.innerHTML='';
-    const whereSel = document.getElementById('op_where_col'); whereSel.innerHTML = '<option value="">-- none --</option>';
-    cols.forEach(c=>{ const o=document.createElement('option'); o.value=c.name; o.text=c.name; colsSel.appendChild(o); const w=document.createElement('option'); w.value=c.name; w.text=c.name; whereSel.appendChild(w); });
-    document.getElementById('operationModalTitle').textContent = `${op} on ${tbl}`;
-    const help = document.getElementById('operation_help'); const preview = document.getElementById('op_sql_textarea'); const confirmWrap = document.getElementById('op_confirm_wrap'); document.getElementById('op_confirm_text').value='';
-    if(op==='SELECT'){ help.textContent='Choose columns and optionally WHERE; preview will show SELECT'; preview.value = `SELECT * FROM "${tbl}" LIMIT 100`; confirmWrap.style.display='none'; }
-    else if(op==='INSERT'){ help.textContent='Choose columns to insert; edit values in preview before running'; preview.value = `INSERT INTO "${tbl}" (${cols.map(c=>c.name).join(', ')}) VALUES (${cols.map(c=>'NULL').join(', ')})`; confirmWrap.style.display='none'; }
-    else if(op==='UPDATE'){ help.textContent='Choose columns to update and provide WHERE'; preview.value = `UPDATE "${tbl}" SET ${cols[0].name} = ${cols[0].dflt_value||'NULL'} WHERE ${cols[0].name} = ''`; confirmWrap.style.display='block'; }
-    else if(op==='DELETE'){ help.textContent='Specify WHERE to delete rows; deleting without WHERE will remove all rows'; preview.value = `DELETE FROM "${tbl}" WHERE ${cols[0].name} = ''`; confirmWrap.style.display='block'; }
-    else if(op==='DROP'){ help.textContent='DROP will remove the entire table/view'; preview.value = `DROP TABLE "${tbl}"`; confirmWrap.style.display='block'; }
-    else if(op==='ALTER'){ help.textContent='Edit the SQL preview to your ALTER statement'; preview.value = `ALTER TABLE "${tbl}" ADD COLUMN new_col TEXT`; confirmWrap.style.display='block'; }
-    const modal = new bootstrap.Modal(document.getElementById('operationModal')); modal.show();
+    const op = e.currentTarget.getAttribute('data-op');
+    const tbl = document.getElementById('table_explorer_select').value;
+    if(!tbl){ alert('Select a table first in the dropdown above.'); return; }
 
-    // Run handler
-    document.getElementById('op_run_btn').onclick = async ()=>{
-      const sqlToRun = document.getElementById('op_sql_textarea').value || '';
-      if(['DELETE','DROP','ALTER','UPDATE'].includes(op)){
-        const ctxt = document.getElementById('op_confirm_text').value || '';
-        if(ctxt.trim().toUpperCase() !== op){ alert(`Type ${op} to confirm`); return; }
-        if(!confirm(`Run ${op} on ${tbl}? This may be destructive.`)) return;
-      }
-      const per = parseInt(document.getElementById('per_page').value||200);
-      const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: sqlToRun, page:1, per_page: per})});
-      const js = await res.json(); renderResult(js, 1, per); const m = bootstrap.Modal.getInstance(document.getElementById('operationModal')); if(m) m.hide();
-    };
+    try{
+        const res = await fetch(`/admin/table_info/${encodeURIComponent(tbl)}`);
+        const cols = await res.json(); 
+        if(cols.error){ alert('Error fetching table info: '+cols.error); return; }
+        
+        const colsSel = document.getElementById('op_columns_select'); colsSel.innerHTML='';
+        const whereSel = document.getElementById('op_where_col'); whereSel.innerHTML = '<option value="">-- none --</option>';
+        cols.forEach(c=>{ 
+            const o=document.createElement('option'); o.value=c.name; o.text=c.name; colsSel.appendChild(o); 
+            const w=document.createElement('option'); w.value=c.name; w.text=c.name; whereSel.appendChild(w); 
+        });
+        document.getElementById('operationModalTitle').textContent = `${op} on ${tbl}`;
+        const help = document.getElementById('operation_help'); 
+        const preview = document.getElementById('op_sql_textarea'); 
+        const confirmWrap = document.getElementById('op_confirm_wrap'); 
+        const opConfirmText = document.getElementById('op_confirm_text');
+        opConfirmText.value = ''; // Clear confirmation text
+        
+        let initialSql = '';
+        if(op==='SELECT'){ help.textContent='Choose columns and optionally WHERE; preview will show SELECT'; initialSql = `SELECT * FROM "${tbl}" LIMIT 100`; confirmWrap.style.display='none'; }
+        else if(op==='INSERT'){ 
+            help.textContent='Choose columns to insert; edit values in preview before running'; 
+            initialSql = `INSERT INTO "${tbl}" (${cols.map(c=>c.name).join(', ')}) VALUES (${cols.map(c=>'NULL').join(', ')})`; 
+            confirmWrap.style.display='none'; 
+        }
+        else if(op==='UPDATE'){ 
+            help.textContent='Choose columns to update and provide WHERE (crucial for safety)'; 
+            initialSql = `UPDATE "${tbl}" SET ${cols.length > 0 ? cols[0].name : 'column_name'} = 'new_value' WHERE id = 123`; 
+            confirmWrap.style.display='block'; 
+        }
+        else if(op==='DELETE'){ 
+            help.textContent='Specify WHERE to delete rows; deleting without WHERE will remove all rows and is highly dangerous.'; 
+            initialSql = `DELETE FROM "${tbl}" WHERE id = 123`; 
+            confirmWrap.style.display='block'; 
+        }
+        else if(op==='DROP'){ 
+            help.textContent='DROP will remove the entire table/view schema and all its data permanently. This cannot be undone.'; 
+            initialSql = `DROP TABLE "${tbl}"`; 
+            confirmWrap.style.display='block'; 
+        }
+        else if(op==='ALTER'){ 
+            help.textContent='Edit the SQL preview to your ALTER TABLE statement. This modifies the table schema.'; 
+            initialSql = `ALTER TABLE "${tbl}" ADD COLUMN new_column_name TEXT DEFAULT '';`; 
+            confirmWrap.style.display='block'; 
+        }
+        preview.value = initialSql;
 
-    // Preview handler
-    document.getElementById('op_preview_btn').onclick = async ()=>{
-      const sql = document.getElementById('op_sql_textarea').value || '';
-      const opUpper = op.toUpperCase(); let previewSql = null;
-      try{
-        if(opUpper === 'DELETE'){
-          const m = sql.match(/DELETE\s+FROM\s+"?([^\s\"]+)"?\s*(WHERE[\s\S]+)?/i);
-          if(m){ const tbl = m[1]; const where = m[2] || ''; previewSql = `SELECT * FROM "${tbl}" ${where} LIMIT 200`; }
-        } else if(opUpper === 'UPDATE'){
-          const m = sql.match(/UPDATE\s+"?([^\s\"]+)"?\s+SET[\s\S]+?(WHERE[\s\S]+)?$/i);
-          if(m){ const tbl = m[1]; const where = m[2] || ''; previewSql = `SELECT * FROM "${tbl}" ${where} LIMIT 200`; }
-        } else if(opUpper === 'INSERT'){
-          const m = sql.match(/INSERT\s+INTO\s+"?([^\s\(\"]+)"?/i);
-          if(m){ previewSql = `SELECT * FROM "${m[1]}" LIMIT 200`; }
-        } else if(opUpper === 'SELECT'){
-          previewSql = sql + (sql.toUpperCase().includes('LIMIT') ? '' : ' LIMIT 200');
-        } else if(opUpper === 'DROP' || opUpper === 'ALTER'){ alert('No preview available for DROP/ALTER.'); return; }
-      }catch(e){ previewSql = null; }
-      if(!previewSql){ alert('Could not build a preview. Edit SQL to a SELECT statement.'); return; }
-      const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: previewSql, page:1, per_page:200})});
-      const js = await res.json(); renderResult(js, 1, 200);
-    };
+        const modal = new bootstrap.Modal(document.getElementById('operationModal')); modal.show();
 
-  }catch(err){ alert('Failed to load columns: '+err); }
+        // Run handler for the modal
+        document.getElementById('op_run_btn').onclick = async ()=>{
+            const sqlToRun = document.getElementById('op_sql_textarea').value || '';
+            if (!sqlToRun.trim()) { alert('SQL query cannot be empty.'); return; }
+
+            const needsConfirmation = ['DELETE','DROP','ALTER','UPDATE'].includes(op.toUpperCase());
+            if(needsConfirmation){
+                const ctxt = opConfirmText.value || '';
+                if(ctxt.trim().toUpperCase() !== op.toUpperCase()){ alert(`Type "${op}" to confirm this destructive operation.`); return; }
+                if(!confirm(`Are you absolutely sure you want to run this ${op} operation on "${tbl}"?\n\nSQL:\n${sqlToRun.substring(0, 200)}...\n\nThis action is PERMANENT and CANNOT BE UNDONE.`)) return;
+            }
+            
+            const per = parseInt(document.getElementById('per_page').value||200);
+            const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: sqlToRun, page:1, per_page: per, advanced_mode: advancedToggle.checked})});
+            const js = await res.json(); renderResult(js, 1, per); 
+            const m = bootstrap.Modal.getInstance(document.getElementById('operationModal')); if(m) m.hide();
+        };
+
+        // Preview handler for the modal
+        document.getElementById('op_preview_btn').onclick = async ()=>{
+            const sql = document.getElementById('op_sql_textarea').value || '';
+            if (!sql.trim()) { alert('SQL query cannot be empty for preview.'); return; }
+            const opUpper = op.toUpperCase(); 
+            let previewSql = null;
+            try{
+                if(opUpper === 'DELETE'){
+                    const m = sql.match(/DELETE\s+FROM\s+"?([^\s\"]+)"?\s*(WHERE[\s\S]+)?/i);
+                    if(m){ const tbl = m[1]; const where = m[2] || ''; previewSql = `SELECT * FROM "${tbl}" ${where} LIMIT 200`; }
+                } else if(opUpper === 'UPDATE'){
+                    const m = sql.match(/UPDATE\s+"?([^\s\"]+)"?\s+SET[\s\S]+?(WHERE[\s\S]+)?$/i);
+                    if(m){ const tbl = m[1]; const where = m[2] || ''; previewSql = `SELECT * FROM "${tbl}" ${where} LIMIT 200`; }
+                } else if(opUpper === 'INSERT'){
+                    const m = sql.match(/INSERT\s+INTO\s+"?([^\s\(\"]+)"?/i);
+                    if(m){ previewSql = `SELECT * FROM "${m[1]}" LIMIT 200`; }
+                } else if(opUpper === 'SELECT'){
+                    previewSql = sql + (sql.toUpperCase().includes('LIMIT') ? '' : ' LIMIT 200');
+                } else if(opUpper === 'DROP' || opUpper === 'ALTER'){ 
+                    alert('No direct data preview available for DROP or ALTER operations. Review the SQL carefully.'); 
+                    return; 
+                }
+            }catch(e){ previewSql = null; }
+            if(!previewSql){ alert('Could not automatically build a data preview. Please ensure your SQL is a valid SELECT statement for preview.'); return; }
+            
+            // Render results in the main results panel, not the modal
+            const res = await fetch('/admin/db_control/run_query', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sql: previewSql, page:1, per_page:200})});
+            const js = await res.json(); 
+            renderResult(js, 1, 200);
+            // Optionally, switch to the manual query tab or keep the explorer open
+            const queryTab = new bootstrap.Tab(document.getElementById('query-tab'));
+            queryTab.show();
+        };
+
+    }catch(err){ 
+        alert('Failed to load columns for selected table: '+err.message); 
+        console.error('Failed to load columns for table explorer:', err);
+    }
 }));
 </script>
 
 <script>
 document.getElementById('manual_trigger').addEventListener('click', async ()=>{
-  const sel = document.getElementById('manual_setup_select').value;
-  let id = 0;
-  if(sel){ id = parseInt(sel); }
-  if(!id){ id = parseInt(document.getElementById('manual_config_id').value || 0); }
-  if(!id){ alert('Select or enter a numeric config id'); return; }
-  if(!confirm(`Trigger paper processing for config ${id}?`)) return;
-  const res = await fetch(`/admin/trigger_paper/${id}`, {method:'POST'});
-  const js = await res.json();
-  if(js.error){ alert('Error: '+js.error); return; }
-  alert('Done. See logs in response.\n' + (js.logs||[]).join('\n'));
+    const sel = document.getElementById('manual_setup_select').value;
+    let id = 0;
+    if(sel){ id = parseInt(sel); }
+    if(!id){ id = parseInt(document.getElementById('manual_config_id').value || 0); }
+    if(!id){ alert('Please select a recent setup or enter a numeric config ID.'); return; }
+    if(!confirm(`Trigger paper processing for configuration ID ${id}? This will execute backend logic.`)) return;
+
+    // Show a loading indicator in the result area
+    document.getElementById('result_head').innerHTML = '';
+    document.getElementById('result_body').innerHTML = '<tr><td colspan="99" class="text-center text-info"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Triggering paper setup... Please wait.</td></tr>';
+
+    try {
+        const res = await fetch(`/admin/trigger_paper/${id}`, {method:'POST'});
+        const js = await res.json();
+        if(js.error){ 
+            alert('Error triggering paper setup: '+js.error); 
+            document.getElementById('result_body').innerHTML = `<tr><td colspan="99" class="text-center text-danger">Error: ${js.error}</td></tr>`;
+            return; 
+        }
+        alert('Paper setup triggered successfully!\nCheck logs for details:\n' + (js.logs||[]).join('\n'));
+        // Optionally display logs in the results panel too
+        const head = document.getElementById('result_head');
+        const body = document.getElementById('result_body');
+        head.innerHTML = '<tr><th>Log Output</th></tr>';
+        body.innerHTML = js.logs.length > 0 ? js.logs.map(l => `<tr><td>${l}</td></tr>`).join('') : '<tr><td class="text-muted text-center">No logs returned.</td></tr>';
+        document.getElementById('cur_page').textContent = '1';
+        document.getElementById('total_count').textContent = `${js.logs.length} log lines`;
+
+    } catch (e) {
+        alert('An error occurred while calling the trigger API: ' + e.message);
+        document.getElementById('result_body').innerHTML = `<tr><td colspan="99" class="text-center text-danger">API Call Error: ${e.message}</td></tr>`;
+        console.error('Manual trigger failed:', e);
+    }
 });
 </script>
 
 <script>
 async function loadSetups(){
-  try{
-    const res = await fetch('/admin/list_setups');
-    const js = await res.json();
-    const sel = document.getElementById('manual_setup_select');
-    sel.innerHTML = '<option value="">-- choose setup --</option>';
-    if(Array.isArray(js)){
-      js.forEach(s=>{
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.text = `${s.id} | user:${s.user_id} | ${s.symbol} | strat:${s.strategy_id} | paper:${s.is_paper} active:${s.is_active}`;
-        sel.appendChild(opt);
-      });
-    }
-  }catch(e){ console.log('failed to load setups', e); }
+    try{
+        const res = await fetch('/admin/list_setups');
+        const js = await res.json();
+        const sel = document.getElementById('manual_setup_select');
+        sel.innerHTML = '<option value="">-- choose setup --</option>';
+        if(Array.isArray(js)){
+            js.forEach(s=>{
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.text = `${s.id} | user:${s.user_id} | ${s.symbol} | strat:${s.strategy_id} | paper:${s.is_paper} active:${s.is_active}`;
+                sel.appendChild(opt);
+            });
+        }
+    }catch(e){ console.error('failed to load setups', e); }
 }
 loadSetups();
 </script>
 
-<!-- CodeMirror (lightweight SQL editor) via CDN -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.min.js"></script>
 <script>
-// replace textarea with CodeMirror instance
-let cm = CodeMirror.fromTextArea(document.getElementById('query_sql'), {mode:'text/x-sql', lineNumbers:true, theme:'default'});
 // wire advanced toggle to server
 document.getElementById('advanced_toggle').addEventListener('change', async (e)=>{
-  const enable = e.target.checked;
-  if(enable){
-    if(!confirm('Enabling advanced DB mode allows CREATE/ALTER/DROP statements. This is potentially dangerous. Continue?')){ e.target.checked=false; return; }
-  }
-  const res = await fetch('/admin/db_control/enable_advanced', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({enable: enable})});
-  const js = await res.json();
-  if(!js.success){ alert('Failed to set advanced mode: '+(js.error||'unknown')); }
+    const enable = e.target.checked;
+    if(enable){
+        if(!confirm('Enabling advanced DB mode allows CREATE/ALTER/DROP statements via Manual Query, and DELETE rows. This is potentially dangerous and can lead to data loss. Continue?')){ e.target.checked=false; return; }
+    }
+    const res = await fetch('/admin/db_control/enable_advanced', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({enable: enable})});
+    const js = await res.json();
+    if(!js.success){ 
+        alert('Failed to set advanced mode: '+(js.error||'unknown')); 
+        e.target.checked = !enable; // Revert checkbox if server failed
+    } else {
+        // Update states of other elements based on advanced mode
+        updateDeleteButtonState(); // Update delete row button
+    }
 });
 </script>
-
-<!-- SQL Help Modal -->
-<div class="modal" tabindex="-1" id="sqlHelpModal">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">SQL Help & Snippets</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p>Click a snippet to insert it into the editor. Edit before running.</p>
-        <div class="list-group">
-          <button class="list-group-item list-group-item-action snippet" data-snip="SELECT * FROM sqlite_master WHERE type='table'">List tables</button>
-          <button class="list-group-item list-group-item-action snippet" data-snip="SELECT name, sql FROM sqlite_master WHERE type='view'">List views</button>
-          <button class="list-group-item list-group-item-action snippet" data-snip="SELECT * FROM paper_trades ORDER BY entry_time DESC LIMIT 100">Recent paper_trades</button>
-          <button class="list-group-item list-group-item-action snippet" data-snip="SELECT user_id, symbol, SUM(pnl_inr) as total_pnl FROM paper_trades GROUP BY user_id, symbol ORDER BY total_pnl DESC">Pnl by user & symbol</button>
-          <button class="list-group-item list-group-item-action snippet" data-snip="SELECT config_id, COUNT(*) as open_positions FROM paper_trades WHERE status='OPEN' GROUP BY config_id">Open positions per config</button>
-          <button class="list-group-item list-group-item-action snippet" data-snip="-- Example create view\nCREATE VIEW my_recent_trades AS SELECT id, user_id, symbol, entry_price, entry_time FROM paper_trades WHERE status='OPEN'">Create view example</button>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
-document.getElementById('help_btn').addEventListener('click', ()=>{ const m = new bootstrap.Modal(document.getElementById('sqlHelpModal')); m.show(); });
-document.querySelectorAll('.snippet').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const s = btn.getAttribute('data-snip');
-    cm.setValue(s);
-    // auto close modal
-    const modalEl = document.getElementById('sqlHelpModal');
-    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-    modal.hide();
-  });
-});
-</script>
+document.getElementById('help_btn').addEventListener('click', ()=>{ 
+    // Ensure the help modal content is reset before showing
+    const body = document.getElementById('sqlHelpModalBody');
+    body.innerHTML = `
+        <p>Click a snippet to insert it into the editor. Edit before running.</p>
+        <div class="list-group">
+            <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT * FROM sqlite_master WHERE type='table'">List tables</button>
+            <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT name, sql FROM sqlite_master WHERE type='view'">List views</button>
+            <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT * FROM paper_trades ORDER BY entry_time DESC LIMIT 100">Recent paper_trades</button>
+            <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT user_id, symbol, SUM(pnl_inr) as total_pnl FROM paper_trades GROUP BY user_id, symbol ORDER BY total_pnl DESC">Pnl by user & symbol</button>
+            <button type="button" class="list-group-item list-group-item-action snippet" data-snip="SELECT config_id, COUNT(*) as open_positions FROM paper_trades WHERE status='OPEN' GROUP BY config_id">Open positions per config</button>
+            <button type="button" class="list-group-item list-group-item-action snippet" data-snip="-- Example create view\nCREATE VIEW my_recent_trades AS SELECT id, user_id, symbol, entry_price, entry_time FROM paper_trades WHERE status='OPEN'">Create view example</button>
+        </div>
+    `;
+    // Re-attach event listeners to the dynamically added snippets
+    document.querySelectorAll('#sqlHelpModalBody .snippet').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+            const s = btn.getAttribute('data-snip');
+            cm.setValue(s); // Insert into CodeMirror
+            const modalEl = document.getElementById('sqlHelpModal');
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.hide();
+        });
+    });
 
+    const m = new bootstrap.Modal(document.getElementById('sqlHelpModal')); m.show(); 
+});
+
+</script>
 {% endblock %}

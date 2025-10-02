@@ -400,7 +400,8 @@
 let equityChart, dailyBarChart, pnlHistChart, holdHistChart, fullEquityData=[];
 
 function fmtINRPlain(n){
-  return '₹'+new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(Number(n||0));
+  // Do not include thousands separators; show fixed 2 decimals
+  try{ return '₹' + Number(n||0).toFixed(2); }catch(e){ return '₹0.00'; }
 }
 function getPnlInrValue(p){
   if(!p) return 0;
@@ -412,7 +413,7 @@ function getPnlInrValue(p){
     const mv = Number(m);
     if(!Number.isNaN(mv)) return mv;
   }
-  if(typeof p.pnl_usdt !== 'undefined' && window._fx_usdt_inr) return Number(p.pnl_usdt||0) * Number(window._fx_usdt_inr||0);
+  // Do not convert USD->INR on client. Prefer server-provided INR values.
   return 0;
 }
 function setPosNeg(el,num){
@@ -775,19 +776,22 @@ document.addEventListener("DOMContentLoaded", function() {
   const list = document.getElementById("symbolSuggestions");
   // global instrument cache for tests and other pages
   window.allSymbols = window.allSymbols || [];
+  try{
+    const cached = sessionStorage.getItem('instruments_cache_v1');
+    if (cached){ try{ const parsed = JSON.parse(cached); if (Array.isArray(parsed)) window.allSymbols = parsed; }catch(e){} }
+  }catch(e){ }
 
-  fetch("{{ url_for('fetch_instruments') }}")
-    .then(r => r.json())
-    .then(data => {
-      window.allSymbols = Array.isArray(data) ? data : [];
-      try{
-        // trigger input on known symbol inputs to refresh suggestions if user already typed
-        ['symbolSearchInput','symbolSearchInputAdd','editSymbolInput'].forEach(id=>{
-          const el = document.getElementById(id);
-          if (el && el.value && el.value.trim().length) el.dispatchEvent(new Event('input'));
-        });
-      }catch(e){ /* non-fatal */ }
-    });
+  if (window.allSymbols && window.allSymbols.length){
+    try{ ['symbolSearchInput','symbolSearchInputAdd','editSymbolInput'].forEach(id=>{ const el = document.getElementById(id); if (el && el.value && el.value.trim().length) el.dispatchEvent(new Event('input')); }); }catch(e){}
+  } else {
+    fetch("{{ url_for('fetch_instruments') }}")
+      .then(r => r.json())
+      .then(data => {
+        window.allSymbols = Array.isArray(data) ? data : [];
+        try{ sessionStorage.setItem('instruments_cache_v1', JSON.stringify(window.allSymbols)); }catch(e){}
+        try{ ['symbolSearchInput','symbolSearchInputAdd','editSymbolInput'].forEach(id=>{ const el = document.getElementById(id); if (el && el.value && el.value.trim().length) el.dispatchEvent(new Event('input')); }); }catch(e){}
+      }).catch(()=>{});
+  }
 
   input.addEventListener("input", function() {
     const term = input.value.trim().toLowerCase();

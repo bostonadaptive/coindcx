@@ -1,0 +1,1318 @@
+[
+  {
+    "symbol": "BINANCE:AUCTIONUSDT",
+    "name": "B-AUCTION_USDT"
+  },
+  {
+    "symbol": "BINANCE:MOVRUSDT",
+    "name": "B-MOVR_USDT"
+  },
+  {
+    "symbol": "BINANCE:ONDOUSDT",
+    "name": "B-ONDO_USDT"
+  },
+  {
+    "symbol": "BINANCE:JUPUSDT",
+    "name": "B-JUP_USDT"
+  },
+  {
+    "symbol": "BINANCE:OMUSDT",
+    "name": "B-OM_USDT"
+  },
+  {
+    "symbol": "BINANCE:TONUSDT",
+    "name": "B-TON_USDT"
+  },
+  {
+    "symbol": "BINANCE:PONKEUSDT",
+    "name": "B-PONKE_USDT"
+  },
+  {
+    "symbol": "BINANCE:AXLUSDT",
+    "name": "B-AXL_USDT"
+  },
+  {
+    "symbol": "BINANCE:DRIFTUSDT",
+    "name": "B-DRIFT_USDT"
+  },
+  {
+    "symbol": "BINANCE:MYROUSDT",
+    "name": "B-MYRO_USDT"
+  },
+  {
+    "symbol": "BINANCE:BOMEUSDT",
+    "name": "B-BOME_USDT"
+  },
+  {
+    "symbol": "BINANCE:ETHFIUSDT",
+    "name": "B-ETHFI_USDT"
+  },
+  {
+    "symbol": "BINANCE:FIDAUSDT",
+    "name": "B-FIDA_USDT"
+  },
+  {
+    "symbol": "BINANCE:GLMUSDT",
+    "name": "B-GLM_USDT"
+  },
+  {
+    "symbol": "BINANCE:ENAUSDT",
+    "name": "B-ENA_USDT"
+  },
+  {
+    "symbol": "BINANCE:YFIUSDT",
+    "name": "B-YFI_USDT"
+  },
+  {
+    "symbol": "BINANCE:ARKMUSDT",
+    "name": "B-ARKM_USDT"
+  },
+  {
+    "symbol": "BINANCE:IMXUSDT",
+    "name": "B-IMX_USDT"
+  },
+  {
+    "symbol": "BINANCE:TAOUSDT",
+    "name": "B-TAO_USDT"
+  },
+  {
+    "symbol": "BINANCE:BBUSDT",
+    "name": "B-BB_USDT"
+  },
+  {
+    "symbol": "BINANCE:NOTUSDT",
+    "name": "B-NOT_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZROUSDT",
+    "name": "B-ZRO_USDT"
+  },
+  {
+    "symbol": "BINANCE:RENDERUSDT",
+    "name": "B-RENDER_USDT"
+  },
+  {
+    "symbol": "BINANCE:RAREUSDT",
+    "name": "B-RARE_USDT"
+  },
+  {
+    "symbol": "BINANCE:BRETTUSDT",
+    "name": "B-BRETT_USDT"
+  },
+  {
+    "symbol": "BINANCE:SUNUSDT",
+    "name": "B-SUN_USDT"
+  },
+  {
+    "symbol": "BINANCE:MOCAUSDT",
+    "name": "B-MOCA_USDT"
+  },
+  {
+    "symbol": "BINANCE:QUICKUSDT",
+    "name": "B-QUICK_USDT"
+  },
+  {
+    "symbol": "BINANCE:ENSUSDT",
+    "name": "B-ENS_USDT"
+  },
+  {
+    "symbol": "BINANCE:PLUMEUSDT",
+    "name": "B-PLUME_USDT"
+  },
+  {
+    "symbol": "BINANCE:CGPTUSDT",
+    "name": "B-CGPT_USDT"
+  },
+  {
+    "symbol": "BINANCE:POLUSDT",
+    "name": "B-POL_USDT"
+  },
+  {
+    "symbol": "BINANCE:HMSTRUSDT",
+    "name": "B-HMSTR_USDT"
+  },
+  {
+    "symbol": "BINANCE:COSUSDT",
+    "name": "B-COS_USDT"
+  },
+  {
+    "symbol": "BINANCE:EIGENUSDT",
+    "name": "B-EIGEN_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000CATUSDT",
+    "name": "B-1000CAT_USDT"
+  },
+  {
+    "symbol": "BINANCE:GOATUSDT",
+    "name": "B-GOAT_USDT"
+  },
+  {
+    "symbol": "BINANCE:FORTHUSDT",
+    "name": "B-FORTH_USDT"
+  },
+  {
+    "symbol": "BINANCE:CETUSUSDT",
+    "name": "B-CETUS_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000000MOGUSDT",
+    "name": "B-1000000MOG_USDT"
+  },
+  {
+    "symbol": "BINANCE:GRASSUSDT",
+    "name": "B-GRASS_USDT"
+  },
+  {
+    "symbol": "BINANCE:HIPPOUSDT",
+    "name": "B-HIPPO_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000XUSDT",
+    "name": "B-1000X_USDT"
+  },
+  {
+    "symbol": "BINANCE:DEGENUSDT",
+    "name": "B-DEGEN_USDT"
+  },
+  {
+    "symbol": "BINANCE:PROMUSDT",
+    "name": "B-PROM_USDT"
+  },
+  {
+    "symbol": "BINANCE:REDUSDT",
+    "name": "B-RED_USDT"
+  },
+  {
+    "symbol": "BINANCE:SOMIUSDT",
+    "name": "B-SOMI_USDT"
+  },
+  {
+    "symbol": "BINANCE:THEUSDT",
+    "name": "B-THE_USDT"
+  },
+  {
+    "symbol": "BINANCE:MORPHOUSDT",
+    "name": "B-MORPHO_USDT"
+  },
+  {
+    "symbol": "BINANCE:AEROUSDT",
+    "name": "B-AERO_USDT"
+  },
+  {
+    "symbol": "BINANCE:ACXUSDT",
+    "name": "B-ACX_USDT"
+  },
+  {
+    "symbol": "BINANCE:ATHUSDT",
+    "name": "B-ATH_USDT"
+  },
+  {
+    "symbol": "BINANCE:LUNA2USDT",
+    "name": "B-LUNA2_USDT"
+  },
+  {
+    "symbol": "BINANCE:KOMAUSDT",
+    "name": "B-KOMA_USDT"
+  },
+  {
+    "symbol": "BINANCE:XRPUSDT",
+    "name": "B-XRP_USDT"
+  },
+  {
+    "symbol": "BINANCE:VOXELUSDT",
+    "name": "B-VOXEL_USDT"
+  },
+  {
+    "symbol": "BINANCE:VIRTUALUSDT",
+    "name": "B-VIRTUAL_USDT"
+  },
+  {
+    "symbol": "BINANCE:VELODROMEUSDT",
+    "name": "B-VELODROME_USDT"
+  },
+  {
+    "symbol": "BINANCE:XTZUSDT",
+    "name": "B-XTZ_USDT"
+  },
+  {
+    "symbol": "BINANCE:RDNTUSDT",
+    "name": "B-RDNT_USDT"
+  },
+  {
+    "symbol": "BINANCE:SAGAUSDT",
+    "name": "B-SAGA_USDT"
+  },
+  {
+    "symbol": "BINANCE:WIFUSDT",
+    "name": "B-WIF_USDT"
+  },
+  {
+    "symbol": "BINANCE:CHILLGUYUSDT",
+    "name": "B-CHILLGUY_USDT"
+  },
+  {
+    "symbol": "BINANCE:ORCAUSDT",
+    "name": "B-ORCA_USDT"
+  },
+  {
+    "symbol": "BINANCE:BELUSDT",
+    "name": "B-BEL_USDT"
+  },
+  {
+    "symbol": "BINANCE:RIFUSDT",
+    "name": "B-RIF_USDT"
+  },
+  {
+    "symbol": "BINANCE:LPTUSDT",
+    "name": "B-LPT_USDT"
+  },
+  {
+    "symbol": "BINANCE:VANAUSDT",
+    "name": "B-VANA_USDT"
+  },
+  {
+    "symbol": "BINANCE:SPXUSDT",
+    "name": "B-SPX_USDT"
+  },
+  {
+    "symbol": "BINANCE:1INCHUSDT",
+    "name": "B-1INCH_USDT"
+  },
+  {
+    "symbol": "BINANCE:FLUXUSDT",
+    "name": "B-FLUX_USDT"
+  },
+  {
+    "symbol": "BINANCE:PENGUUSDT",
+    "name": "B-PENGU_USDT"
+  },
+  {
+    "symbol": "BINANCE:MINAUSDT",
+    "name": "B-MINA_USDT"
+  },
+  {
+    "symbol": "BINANCE:ROSEUSDT",
+    "name": "B-ROSE_USDT"
+  },
+  {
+    "symbol": "BINANCE:SYNUSDT",
+    "name": "B-SYN_USDT"
+  },
+  {
+    "symbol": "BINANCE:ICPUSDT",
+    "name": "B-ICP_USDT"
+  },
+  {
+    "symbol": "BINANCE:DYMUSDT",
+    "name": "B-DYM_USDT"
+  },
+  {
+    "symbol": "BINANCE:HOOKUSDT",
+    "name": "B-HOOK_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZETAUSDT",
+    "name": "B-ZETA_USDT"
+  },
+  {
+    "symbol": "BINANCE:RUNEUSDT",
+    "name": "B-RUNE_USDT"
+  },
+  {
+    "symbol": "BINANCE:AIXBTUSDT",
+    "name": "B-AIXBT_USDT"
+  },
+  {
+    "symbol": "BINANCE:BNBUSDT",
+    "name": "B-BNB_USDT"
+  },
+  {
+    "symbol": "BINANCE:POPCATUSDT",
+    "name": "B-POPCAT_USDT"
+  },
+  {
+    "symbol": "BINANCE:AKTUSDT",
+    "name": "B-AKT_USDT"
+  },
+  {
+    "symbol": "BINANCE:BCHUSDT",
+    "name": "B-BCH_USDT"
+  },
+  {
+    "symbol": "BINANCE:FARTCOINUSDT",
+    "name": "B-FARTCOIN_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZEREBROUSDT",
+    "name": "B-ZEREBRO_USDT"
+  },
+  {
+    "symbol": "BINANCE:LUMIAUSDT",
+    "name": "B-LUMIA_USDT"
+  },
+  {
+    "symbol": "BINANCE:ARUSDT",
+    "name": "B-AR_USDT"
+  },
+  {
+    "symbol": "BINANCE:BSVUSDT",
+    "name": "B-BSV_USDT"
+  },
+  {
+    "symbol": "BINANCE:SUPERUSDT",
+    "name": "B-SUPER_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZKUSDT",
+    "name": "B-ZK_USDT"
+  },
+  {
+    "symbol": "BINANCE:AEVOUSDT",
+    "name": "B-AEVO_USDT"
+  },
+  {
+    "symbol": "BINANCE:KMNOUSDT",
+    "name": "B-KMNO_USDT"
+  },
+  {
+    "symbol": "BINANCE:SXPUSDT",
+    "name": "B-SXP_USDT"
+  },
+  {
+    "symbol": "BINANCE:NKNUSDT",
+    "name": "B-NKN_USDT"
+  },
+  {
+    "symbol": "BINANCE:HIVEUSDT",
+    "name": "B-HIVE_USDT"
+  },
+  {
+    "symbol": "BINANCE:IOTAUSDT",
+    "name": "B-IOTA_USDT"
+  },
+  {
+    "symbol": "BINANCE:ICXUSDT",
+    "name": "B-ICX_USDT"
+  },
+  {
+    "symbol": "BINANCE:TRXUSDT",
+    "name": "B-TRX_USDT"
+  },
+  {
+    "symbol": "BINANCE:EDUUSDT",
+    "name": "B-EDU_USDT"
+  },
+  {
+    "symbol": "BINANCE:LDOUSDT",
+    "name": "B-LDO_USDT"
+  },
+  {
+    "symbol": "BINANCE:DOGEUSDT",
+    "name": "B-DOGE_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZENUSDT",
+    "name": "B-ZEN_USDT"
+  },
+  {
+    "symbol": "BINANCE:UMAUSDT",
+    "name": "B-UMA_USDT"
+  },
+  {
+    "symbol": "BINANCE:AI16ZUSDT",
+    "name": "B-AI16Z_USDT"
+  },
+  {
+    "symbol": "BINANCE:REZUSDT",
+    "name": "B-REZ_USDT"
+  },
+  {
+    "symbol": "BINANCE:USUALUSDT",
+    "name": "B-USUAL_USDT"
+  },
+  {
+    "symbol": "BINANCE:FXSUSDT",
+    "name": "B-FXS_USDT"
+  },
+  {
+    "symbol": "BINANCE:SWELLUSDT",
+    "name": "B-SWELL_USDT"
+  },
+  {
+    "symbol": "BINANCE:BIGTIMEUSDT",
+    "name": "B-BIGTIME_USDT"
+  },
+  {
+    "symbol": "BINANCE:STORJUSDT",
+    "name": "B-STORJ_USDT"
+  },
+  {
+    "symbol": "BINANCE:BIOUSDT",
+    "name": "B-BIO_USDT"
+  },
+  {
+    "symbol": "BINANCE:MUBARAKUSDT",
+    "name": "B-MUBARAK_USDT"
+  },
+  {
+    "symbol": "BINANCE:COWUSDT",
+    "name": "B-COW_USDT"
+  },
+  {
+    "symbol": "BINANCE:GASUSDT",
+    "name": "B-GAS_USDT"
+  },
+  {
+    "symbol": "BINANCE:ATOMUSDT",
+    "name": "B-ATOM_USDT"
+  },
+  {
+    "symbol": "BINANCE:DYDXUSDT",
+    "name": "B-DYDX_USDT"
+  },
+  {
+    "symbol": "BINANCE:COOKIEUSDT",
+    "name": "B-COOKIE_USDT"
+  },
+  {
+    "symbol": "BINANCE:BANUSDT",
+    "name": "B-BAN_USDT"
+  },
+  {
+    "symbol": "BINANCE:LTCUSDT",
+    "name": "B-LTC_USDT"
+  },
+  {
+    "symbol": "BINANCE:ETCUSDT",
+    "name": "B-ETC_USDT"
+  },
+  {
+    "symbol": "BINANCE:LINKUSDT",
+    "name": "B-LINK_USDT"
+  },
+  {
+    "symbol": "BINANCE:XLMUSDT",
+    "name": "B-XLM_USDT"
+  },
+  {
+    "symbol": "BINANCE:ADAUSDT",
+    "name": "B-ADA_USDT"
+  },
+  {
+    "symbol": "BINANCE:SONICUSDT",
+    "name": "B-SONIC_USDT"
+  },
+  {
+    "symbol": "BINANCE:SUSDT",
+    "name": "B-S_USDT"
+  },
+  {
+    "symbol": "BINANCE:KAVAUSDT",
+    "name": "B-KAVA_USDT"
+  },
+  {
+    "symbol": "BINANCE:SOLVUSDT",
+    "name": "B-SOLV_USDT"
+  },
+  {
+    "symbol": "BINANCE:ARCUSDT",
+    "name": "B-ARC_USDT"
+  },
+  {
+    "symbol": "BINANCE:XMRUSDT",
+    "name": "B-XMR_USDT"
+  },
+  {
+    "symbol": "BINANCE:ALICEUSDT",
+    "name": "B-ALICE_USDT"
+  },
+  {
+    "symbol": "BINANCE:DASHUSDT",
+    "name": "B-DASH_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZECUSDT",
+    "name": "B-ZEC_USDT"
+  },
+  {
+    "symbol": "BINANCE:TRUMPUSDT",
+    "name": "B-TRUMP_USDT"
+  },
+  {
+    "symbol": "BINANCE:SUSHIUSDT",
+    "name": "B-SUSHI_USDT"
+  },
+  {
+    "symbol": "BINANCE:VETUSDT",
+    "name": "B-VET_USDT"
+  },
+  {
+    "symbol": "BINANCE:MELANIAUSDT",
+    "name": "B-MELANIA_USDT"
+  },
+  {
+    "symbol": "BINANCE:IOSTUSDT",
+    "name": "B-IOST_USDT"
+  },
+  {
+    "symbol": "BINANCE:COTIUSDT",
+    "name": "B-COTI_USDT"
+  },
+  {
+    "symbol": "BINANCE:VINEUSDT",
+    "name": "B-VINE_USDT"
+  },
+  {
+    "symbol": "BINANCE:PIPPINUSDT",
+    "name": "B-PIPPIN_USDT"
+  },
+  {
+    "symbol": "BINANCE:THETAUSDT",
+    "name": "B-THETA_USDT"
+  },
+  {
+    "symbol": "BINANCE:VVVUSDT",
+    "name": "B-VVV_USDT"
+  },
+  {
+    "symbol": "BINANCE:ALGOUSDT",
+    "name": "B-ALGO_USDT"
+  },
+  {
+    "symbol": "BINANCE:LRCUSDT",
+    "name": "B-LRC_USDT"
+  },
+  {
+    "symbol": "BINANCE:KDAUSDT",
+    "name": "B-KDA_USDT"
+  },
+  {
+    "symbol": "BINANCE:GPSUSDT",
+    "name": "B-GPS_USDT"
+  },
+  {
+    "symbol": "BINANCE:SHELLUSDT",
+    "name": "B-SHELL_USDT"
+  },
+  {
+    "symbol": "BINANCE:KAITOUSDT",
+    "name": "B-KAITO_USDT"
+  },
+  {
+    "symbol": "BINANCE:EPICUSDT",
+    "name": "B-EPIC_USDT"
+  },
+  {
+    "symbol": "BINANCE:SNXUSDT",
+    "name": "B-SNX_USDT"
+  },
+  {
+    "symbol": "BINANCE:BMTUSDT",
+    "name": "B-BMT_USDT"
+  },
+  {
+    "symbol": "BINANCE:NILUSDT",
+    "name": "B-NIL_USDT"
+  },
+  {
+    "symbol": "BINANCE:PARTIUSDT",
+    "name": "B-PARTI_USDT"
+  },
+  {
+    "symbol": "BINANCE:SLERFUSDT",
+    "name": "B-SLERF_USDT"
+  },
+  {
+    "symbol": "BINANCE:MAVIAUSDT",
+    "name": "B-MAVIA_USDT"
+  },
+  {
+    "symbol": "BINANCE:SFPUSDT",
+    "name": "B-SFP_USDT"
+  },
+  {
+    "symbol": "BINANCE:PAXGUSDT",
+    "name": "B-PAXG_USDT"
+  },
+  {
+    "symbol": "BINANCE:POWRUSDT",
+    "name": "B-POWR_USDT"
+  },
+  {
+    "symbol": "BINANCE:AVAXUSDT",
+    "name": "B-AVAX_USDT"
+  },
+  {
+    "symbol": "BINANCE:AVAUSDT",
+    "name": "B-AVA_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZILUSDT",
+    "name": "B-ZIL_USDT"
+  },
+  {
+    "symbol": "BINANCE:COMPUSDT",
+    "name": "B-COMP_USDT"
+  },
+  {
+    "symbol": "BINANCE:CRVUSDT",
+    "name": "B-CRV_USDT"
+  },
+  {
+    "symbol": "BINANCE:EGLDUSDT",
+    "name": "B-EGLD_USDT"
+  },
+  {
+    "symbol": "BINANCE:SOLUSDT",
+    "name": "B-SOL_USDT"
+  },
+  {
+    "symbol": "BINANCE:UNIUSDT",
+    "name": "B-UNI_USDT"
+  },
+  {
+    "symbol": "BINANCE:KSMUSDT",
+    "name": "B-KSM_USDT"
+  },
+  {
+    "symbol": "BINANCE:IPUSDT",
+    "name": "B-IP_USDT"
+  },
+  {
+    "symbol": "BINANCE:NEARUSDT",
+    "name": "B-NEAR_USDT"
+  },
+  {
+    "symbol": "BINANCE:AAVEUSDT",
+    "name": "B-AAVE_USDT"
+  },
+  {
+    "symbol": "BINANCE:FILUSDT",
+    "name": "B-FIL_USDT"
+  },
+  {
+    "symbol": "BINANCE:HIGHUSDT",
+    "name": "B-HIGH_USDT"
+  },
+  {
+    "symbol": "BINANCE:RSRUSDT",
+    "name": "B-RSR_USDT"
+  },
+  {
+    "symbol": "BINANCE:SKLUSDT",
+    "name": "B-SKL_USDT"
+  },
+  {
+    "symbol": "BINANCE:XCNUSDT",
+    "name": "B-XCN_USDT"
+  },
+  {
+    "symbol": "BINANCE:XVSUSDT",
+    "name": "B-XVS_USDT"
+  },
+  {
+    "symbol": "BINANCE:SANDUSDT",
+    "name": "B-SAND_USDT"
+  },
+  {
+    "symbol": "BINANCE:RVNUSDT",
+    "name": "B-RVN_USDT"
+  },
+  {
+    "symbol": "BINANCE:TREEUSDT",
+    "name": "B-TREE_USDT"
+  },
+  {
+    "symbol": "BINANCE:MITOUSDT",
+    "name": "B-MITO_USDT"
+  },
+  {
+    "symbol": "BINANCE:NMRUSDT",
+    "name": "B-NMR_USDT"
+  },
+  {
+    "symbol": "BINANCE:CHRUSDT",
+    "name": "B-CHR_USDT"
+  },
+  {
+    "symbol": "BINANCE:HBARUSDT",
+    "name": "B-HBAR_USDT"
+  },
+  {
+    "symbol": "BINANCE:NEOUSDT",
+    "name": "B-NEO_USDT"
+  },
+  {
+    "symbol": "BINANCE:SAFEUSDT",
+    "name": "B-SAFE_USDT"
+  },
+  {
+    "symbol": "BINANCE:AGLDUSDT",
+    "name": "B-AGLD_USDT"
+  },
+  {
+    "symbol": "BINANCE:BAKEUSDT",
+    "name": "B-BAKE_USDT"
+  },
+  {
+    "symbol": "BINANCE:OPUSDT",
+    "name": "B-OP_USDT"
+  },
+  {
+    "symbol": "BINANCE:DENTUSDT",
+    "name": "B-DENT_USDT"
+  },
+  {
+    "symbol": "BINANCE:HOTUSDT",
+    "name": "B-HOT_USDT"
+  },
+  {
+    "symbol": "BINANCE:OGNUSDT",
+    "name": "B-OGN_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000SHIBUSDT",
+    "name": "B-1000SHIB_USDT"
+  },
+  {
+    "symbol": "BINANCE:MASKUSDT",
+    "name": "B-MASK_USDT"
+  },
+  {
+    "symbol": "BINANCE:ARKUSDT",
+    "name": "B-ARK_USDT"
+  },
+  {
+    "symbol": "BINANCE:ATAUSDT",
+    "name": "B-ATA_USDT"
+  },
+  {
+    "symbol": "BINANCE:ARPAUSDT",
+    "name": "B-ARPA_USDT"
+  },
+  {
+    "symbol": "BINANCE:INJUSDT",
+    "name": "B-INJ_USDT"
+  },
+  {
+    "symbol": "BINANCE:GMTUSDT",
+    "name": "B-GMT_USDT"
+  },
+  {
+    "symbol": "BINANCE:API3USDT",
+    "name": "B-API3_USDT"
+  },
+  {
+    "symbol": "BINANCE:TLMUSDT",
+    "name": "B-TLM_USDT"
+  },
+  {
+    "symbol": "BINANCE:APTUSDT",
+    "name": "B-APT_USDT"
+  },
+  {
+    "symbol": "BINANCE:SPELLUSDT",
+    "name": "B-SPELL_USDT"
+  },
+  {
+    "symbol": "BINANCE:TUSDT",
+    "name": "B-T_USDT"
+  },
+  {
+    "symbol": "BINANCE:SCRUSDT",
+    "name": "B-SCR_USDT"
+  },
+  {
+    "symbol": "BINANCE:ASTRUSDT",
+    "name": "B-ASTR_USDT"
+  },
+  {
+    "symbol": "BINANCE:PHBUSDT",
+    "name": "B-PHB_USDT"
+  },
+  {
+    "symbol": "BINANCE:CFXUSDT",
+    "name": "B-CFX_USDT"
+  },
+  {
+    "symbol": "BINANCE:DOLOUSDT",
+    "name": "B-DOLO_USDT"
+  },
+  {
+    "symbol": "BINANCE:STXUSDT",
+    "name": "B-STX_USDT"
+  },
+  {
+    "symbol": "BINANCE:ACHUSDT",
+    "name": "B-ACH_USDT"
+  },
+  {
+    "symbol": "BINANCE:RONINUSDT",
+    "name": "B-RONIN_USDT"
+  },
+  {
+    "symbol": "BINANCE:SSVUSDT",
+    "name": "B-SSV_USDT"
+  },
+  {
+    "symbol": "BINANCE:CKBUSDT",
+    "name": "B-CKB_USDT"
+  },
+  {
+    "symbol": "BINANCE:MLNUSDT",
+    "name": "B-MLN_USDT"
+  },
+  {
+    "symbol": "BINANCE:LQTYUSDT",
+    "name": "B-LQTY_USDT"
+  },
+  {
+    "symbol": "BINANCE:JOEUSDT",
+    "name": "B-JOE_USDT"
+  },
+  {
+    "symbol": "BINANCE:TRUUSDT",
+    "name": "B-TRU_USDT"
+  },
+  {
+    "symbol": "BINANCE:SYSUSDT",
+    "name": "B-SYS_USDT"
+  },
+  {
+    "symbol": "BINANCE:HFTUSDT",
+    "name": "B-HFT_USDT"
+  },
+  {
+    "symbol": "BINANCE:IDUSDT",
+    "name": "B-ID_USDT"
+  },
+  {
+    "symbol": "BINANCE:SUIUSDT",
+    "name": "B-SUI_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000PEPEUSDT",
+    "name": "B-1000PEPE_USDT"
+  },
+  {
+    "symbol": "BINANCE:TWTUSDT",
+    "name": "B-TWT_USDT"
+  },
+  {
+    "symbol": "BINANCE:WLDUSDT",
+    "name": "B-WLD_USDT"
+  },
+  {
+    "symbol": "BINANCE:BNTUSDT",
+    "name": "B-BNT_USDT"
+  },
+  {
+    "symbol": "BINANCE:OXTUSDT",
+    "name": "B-OXT_USDT"
+  },
+  {
+    "symbol": "BINANCE:SEIUSDT",
+    "name": "B-SEI_USDT"
+  },
+  {
+    "symbol": "BINANCE:FLOWUSDT",
+    "name": "B-FLOW_USDT"
+  },
+  {
+    "symbol": "BINANCE:CYBERUSDT",
+    "name": "B-CYBER_USDT"
+  },
+  {
+    "symbol": "BINANCE:HIFIUSDT",
+    "name": "B-HIFI_USDT"
+  },
+  {
+    "symbol": "BINANCE:WAXPUSDT",
+    "name": "B-WAXP_USDT"
+  },
+  {
+    "symbol": "BINANCE:POLYXUSDT",
+    "name": "B-POLYX_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000FLOKIUSDT",
+    "name": "B-1000FLOKI_USDT"
+  },
+  {
+    "symbol": "BINANCE:PENDLEUSDT",
+    "name": "B-PENDLE_USDT"
+  },
+  {
+    "symbol": "BINANCE:CAKEUSDT",
+    "name": "B-CAKE_USDT"
+  },
+  {
+    "symbol": "BINANCE:MEMEUSDT",
+    "name": "B-MEME_USDT"
+  },
+  {
+    "symbol": "BINANCE:ORDIUSDT",
+    "name": "B-ORDI_USDT"
+  },
+  {
+    "symbol": "BINANCE:STEEMUSDT",
+    "name": "B-STEEM_USDT"
+  },
+  {
+    "symbol": "BINANCE:ILVUSDT",
+    "name": "B-ILV_USDT"
+  },
+  {
+    "symbol": "BINANCE:KASUSDT",
+    "name": "B-KAS_USDT"
+  },
+  {
+    "symbol": "BINANCE:C98USDT",
+    "name": "B-C98_USDT"
+  },
+  {
+    "symbol": "BINANCE:XPLUSDT",
+    "name": "B-XPL_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000BONKUSDT",
+    "name": "B-1000BONK_USDT"
+  },
+  {
+    "symbol": "BINANCE:PYTHUSDT",
+    "name": "B-PYTH_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000RATSUSDT",
+    "name": "B-1000RATS_USDT"
+  },
+  {
+    "symbol": "BINANCE:ZRXUSDT",
+    "name": "B-ZRX_USDT"
+  },
+  {
+    "symbol": "BINANCE:USTCUSDT",
+    "name": "B-USTC_USDT"
+  },
+  {
+    "symbol": "BINANCE:ACTUSDT",
+    "name": "B-ACT_USDT"
+  },
+  {
+    "symbol": "BINANCE:WLFIUSDT",
+    "name": "B-WLFI_USDT"
+  },
+  {
+    "symbol": "BINANCE:ONGUSDT",
+    "name": "B-ONG_USDT"
+  },
+  {
+    "symbol": "BINANCE:PIXELUSDT",
+    "name": "B-PIXEL_USDT"
+  },
+  {
+    "symbol": "BINANCE:RLCUSDT",
+    "name": "B-RLC_USDT"
+  },
+  {
+    "symbol": "BINANCE:ETHWUSDT",
+    "name": "B-ETHW_USDT"
+  },
+  {
+    "symbol": "BINANCE:JTOUSDT",
+    "name": "B-JTO_USDT"
+  },
+  {
+    "symbol": "BINANCE:MANAUSDT",
+    "name": "B-MANA_USDT"
+  },
+  {
+    "symbol": "BINANCE:SKYUSDT",
+    "name": "B-SKY_USDT"
+  },
+  {
+    "symbol": "BINANCE:CELOUSDT",
+    "name": "B-CELO_USDT"
+  },
+  {
+    "symbol": "BINANCE:ENJUSDT",
+    "name": "B-ENJ_USDT"
+  },
+  {
+    "symbol": "BINANCE:GRTUSDT",
+    "name": "B-GRT_USDT"
+  },
+  {
+    "symbol": "BINANCE:BLURUSDT",
+    "name": "B-BLUR_USDT"
+  },
+  {
+    "symbol": "BINANCE:1000LUNCUSDT",
+    "name": "B-1000LUNC_USDT"
+  },
+  {
+    "symbol": "BINANCE:HEIUSDT",
+    "name": "B-HEI_USDT"
+  },
+  {
+    "symbol": "BINANCE:CTSIUSDT",
+    "name": "B-CTSI_USDT"
+  },
+  {
+    "symbol": "BINANCE:NFPUSDT",
+    "name": "B-NFP_USDT"
+  },
+  {
+    "symbol": "BINANCE:TIAUSDT",
+    "name": "B-TIA_USDT"
+  },
+  {
+    "symbol": "BINANCE:TOKENUSDT",
+    "name": "B-TOKEN_USDT"
+  },
+  {
+    "symbol": "BINANCE:FIOUSDT",
+    "name": "B-FIO_USDT"
+  },
+  {
+    "symbol": "BINANCE:AIUSDT",
+    "name": "B-AI_USDT"
+  },
+  {
+    "symbol": "BINANCE:XAIUSDT",
+    "name": "B-XAI_USDT"
+  },
+  {
+    "symbol": "BINANCE:WOOUSDT",
+    "name": "B-WOO_USDT"
+  },
+  {
+    "symbol": "BINANCE:TNSRUSDT",
+    "name": "B-TNSR_USDT"
+  },
+  {
+    "symbol": "BINANCE:ALTUSDT",
+    "name": "B-ALT_USDT"
+  },
+  {
+    "symbol": "BINANCE:PORTALUSDT",
+    "name": "B-PORTAL_USDT"
+  },
+  {
+    "symbol": "BINANCE:VANRYUSDT",
+    "name": "B-VANRY_USDT"
+  },
+  {
+    "symbol": "BINANCE:VICUSDT",
+    "name": "B-VIC_USDT"
+  },
+  {
+    "symbol": "BINANCE:IOUSDT",
+    "name": "B-IO_USDT"
+  },
+  {
+    "symbol": "BINANCE:MAGICUSDT",
+    "name": "B-MAGIC_USDT"
+  },
+  {
+    "symbol": "BINANCE:TRBUSDT",
+    "name": "B-TRB_USDT"
+  },
+  {
+    "symbol": "BINANCE:PERPUSDT",
+    "name": "B-PERP_USDT"
+  },
+  {
+    "symbol": "BINANCE:BANANAUSDT",
+    "name": "B-BANANA_USDT"
+  },
+  {
+    "symbol": "BINANCE:QNTUSDT",
+    "name": "B-QNT_USDT"
+  },
+  {
+    "symbol": "BINANCE:RPLUSDT",
+    "name": "B-RPL_USDT"
+  },
+  {
+    "symbol": "BINANCE:CELRUSDT",
+    "name": "B-CELR_USDT"
+  },
+  {
+    "symbol": "BINANCE:GMXUSDT",
+    "name": "B-GMX_USDT"
+  },
+  {
+    "symbol": "BINANCE:DOGSUSDT",
+    "name": "B-DOGS_USDT"
+  },
+  {
+    "symbol": "BINANCE:APEUSDT",
+    "name": "B-APE_USDT"
+  },
+  {
+    "symbol": "BINANCE:PNUTUSDT",
+    "name": "B-PNUT_USDT"
+  },
+  {
+    "symbol": "BINANCE:ARBUSDT",
+    "name": "B-ARB_USDT"
+  },
+  {
+    "symbol": "BINANCE:JASMYUSDT",
+    "name": "B-JASMY_USDT"
+  },
+  {
+    "symbol": "BINANCE:KAIAUSDT",
+    "name": "B-KAIA_USDT"
+  },
+  {
+    "symbol": "BINANCE:DEXEUSDT",
+    "name": "B-DEXE_USDT"
+  },
+  {
+    "symbol": "BINANCE:PHAUSDT",
+    "name": "B-PHA_USDT"
+  },
+  {
+    "symbol": "BINANCE:GRIFFAINUSDT",
+    "name": "B-GRIFFAIN_USDT"
+  },
+  {
+    "symbol": "BINANCE:AVAAIUSDT",
+    "name": "B-AVAAI_USDT"
+  },
+  {
+    "symbol": "BINANCE:ANIMEUSDT",
+    "name": "B-ANIME_USDT"
+  },
+  {
+    "symbol": "BINANCE:MEWUSDT",
+    "name": "B-MEW_USDT"
+  },
+  {
+    "symbol": "BINANCE:LISTAUSDT",
+    "name": "B-LISTA_USDT"
+  },
+  {
+    "symbol": "BINANCE:MEUSDT",
+    "name": "B-ME_USDT"
+  },
+  {
+    "symbol": "BINANCE:SWARMSUSDT",
+    "name": "B-SWARMS_USDT"
+  },
+  {
+    "symbol": "BINANCE:AXSUSDT",
+    "name": "B-AXS_USDT"
+  },
+  {
+    "symbol": "BINANCE:USDCUSDT",
+    "name": "B-USDC_USDT"
+  },
+  {
+    "symbol": "BINANCE:BTCUSDT",
+    "name": "B-BTC_USDT"
+  },
+  {
+    "symbol": "BINANCE:VTHOUSDT",
+    "name": "B-VTHO_USDT"
+  },
+  {
+    "symbol": "BINANCE:QTUMUSDT",
+    "name": "B-QTUM_USDT"
+  },
+  {
+    "symbol": "BINANCE:WUSDT",
+    "name": "B-W_USDT"
+  },
+  {
+    "symbol": "BINANCE:SCRTUSDT",
+    "name": "B-SCRT_USDT"
+  },
+  {
+    "symbol": "BINANCE:METISUSDT",
+    "name": "B-METIS_USDT"
+  },
+  {
+    "symbol": "BINANCE:STRKUSDT",
+    "name": "B-STRK_USDT"
+  },
+  {
+    "symbol": "BINANCE:CATIUSDT",
+    "name": "B-CATI_USDT"
+  },
+  {
+    "symbol": "BINANCE:ETHUSDT",
+    "name": "B-ETH_USDT"
+  },
+  {
+    "symbol": "BINANCE:FLMUSDT",
+    "name": "B-FLM_USDT"
+  },
+  {
+    "symbol": "BINANCE:GUSDT",
+    "name": "B-G_USDT"
+  },
+  {
+    "symbol": "BINANCE:DOTUSDT",
+    "name": "B-DOT_USDT"
+  },
+  {
+    "symbol": "BINANCE:YGGUSDT",
+    "name": "B-YGG_USDT"
+  },
+  {
+    "symbol": "BINANCE:MOODENGUSDT",
+    "name": "B-MOODENG_USDT"
+  },
+  {
+    "symbol": "BINANCE:IOTXUSDT",
+    "name": "B-IOTX_USDT"
+  },
+  {
+    "symbol": "BINANCE:BICOUSDT",
+    "name": "B-BICO_USDT"
+  },
+  {
+    "symbol": "BINANCE:ONTUSDT",
+    "name": "B-ONT_USDT"
+  },
+  {
+    "symbol": "BINANCE:PEOPLEUSDT",
+    "name": "B-PEOPLE_USDT"
+  },
+  {
+    "symbol": "BINANCE:CHESSUSDT",
+    "name": "B-CHESS_USDT"
+  },
+  {
+    "symbol": "BINANCE:B3USDT",
+    "name": "B-B3_USDT"
+  },
+  {
+    "symbol": "BINANCE:NTRNUSDT",
+    "name": "B-NTRN_USDT"
+  },
+  {
+    "symbol": "BINANCE:ONEUSDT",
+    "name": "B-ONE_USDT"
+  },
+  {
+    "symbol": "BINANCE:STGUSDT",
+    "name": "B-STG_USDT"
+  },
+  {
+    "symbol": "BINANCE:ALCHUSDT",
+    "name": "B-ALCH_USDT"
+  },
+  {
+    "symbol": "BINANCE:GALAUSDT",
+    "name": "B-GALA_USDT"
+  },
+  {
+    "symbol": "BINANCE:MANTAUSDT",
+    "name": "B-MANTA_USDT"
+  }
+]

@@ -12,7 +12,7 @@ Notes:
    exchange stream you use.
 """
 import os, time, json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import traceback
 
 try:
@@ -75,7 +75,7 @@ def compute_and_store(us_id, symbol, strategy_name):
     try:
         # pair_market from symbol (expecting tv symbol like 'BINANCE:BTCUSDT' or 'BTCUSDT')
         pair_market = tv_to_pair_market(symbol)
-        end_dt = datetime.utcnow()
+        end_dt = datetime.now(timezone.utc)
         # Worker candle window in days (smaller default for speed). Can be overridden by env.
         days = int(os.environ.get('WORKER_CANDLE_DAYS', '3'))
         start_dt = end_dt - timedelta(days=days)
@@ -92,7 +92,8 @@ def compute_and_store(us_id, symbol, strategy_name):
             rec={'signal':'-','updated_at':int(time.time()*1000),'symbol':symbol}
         else:
             df_signals = func(df)
-            if getattr(df_signals,'empty',True): rec={'signal':'-','updated_at':int(time.time()*1000),'symbol':symbol}
+            if getattr(df_signals,'empty',True):
+                rec={'signal':'-','updated_at':int(time.time()*1000),'symbol':symbol}
             else:
                 last = df_signals.iloc[-1]
                 sig = 'BUY' if last.get('buy_signal') else ('SELL' if last.get('sell_signal') else 'HOLD')
@@ -215,6 +216,12 @@ def _run_loop_core(symbol_map, last_map_refresh):
                     sio.emit('join', {'channelName': 'currentPrices@spot@10s'})
                 except Exception:
                     pass
+                # also subscribe to derivatives/futures batched channels so worker gets futures LTP
+                for ch in ('currentPrices@derivatives@10s', 'currentPrices@futures@10s', 'currentPrices@derivatives@1s'):
+                    try:
+                        sio.emit('join', {'channelName': ch})
+                    except Exception:
+                        pass
 
             @sio.on('price-change')
             def on_price_change(msg):
@@ -260,6 +267,32 @@ def _run_loop_core(symbol_map, last_map_refresh):
                         if label.startswith('B-'):
                             label = label[2:].replace('_','')
                         cleaned = label.replace(':','').replace('/','')
+                        targets = symbol_map.get(cleaned)
+                        if not targets:
+                            continue
+                        for us_id, strat_name, tv_sym in targets:
+                            compute_and_store(us_id, tv_sym, strat_name)
+                except Exception:
+                    traceback.print_exc()
+
+            # also accept derivatives/futures batched updates under other channel names
+            @sio.on('currentPrices@derivatives#update')
+            def on_batch_update_derivatives(msg):
+                try:
+                    data = (msg and (msg.get('data') or msg)) or {}
+                    if isinstance(data, str):
+                        try:
+                            data = json.loads(data)
+                        except Exception:
+                            data = {}
+                    prices = data.get('prices') or data.get('pr') or {}
+                    if not prices:
+                        return
+                    for k, v in prices.items():
+                        label = str(k).upper()
+                        if label.startswith('B-'):
+                            label = label[2:].replace('_', '')
+                        cleaned = label.replace(':', '').replace('/', '')
                         targets = symbol_map.get(cleaned)
                         if not targets:
                             continue
