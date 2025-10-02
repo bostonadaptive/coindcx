@@ -1,6 +1,0 @@
-INFO:     127.0.0.1:50855 - "POST /api/_set_session HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50855 - "GET /api/get_watchlist HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50855 - "GET /api/get_paper_wallet HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50855 - "GET /api/get_positions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50855 - "GET /api/check_broker_status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50855 - "GET /api/get_real_account_data HTTP/1.1" 500 Internal Server Error
