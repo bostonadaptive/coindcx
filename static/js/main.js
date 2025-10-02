@@ -1,27 +1,49 @@
 // ---------------- Load TradingView Chart ----------------
 // Keep a reference to the currently loaded TradingView symbol so we don't re-create the widget repeatedly
 let currentTvSymbol = null;
-function loadChart(symbol = "BTCUSDT.P") {
-  const el = document.getElementById("tradingview_chart");
+// Convert arbitrary symbol or pair into a Binance TradingView symbol like 'BINANCE:ETHUSDT'
+function toBinanceTv(sym) {
+  if (!sym) return 'BINANCE:BTCUSDT';
+  let s = String(sym || '').trim();
+  if (!s) return 'BINANCE:BTCUSDT';
+  // If already a TV symbol with exchange prefix, normalize to BINANCE:<symbol>
+  if (s.includes(':')) {
+    const parts = s.split(':');
+    let rest = parts.slice(1).join(':');
+    rest = rest.replace(/\.P$/i, '');
+    rest = rest.replace(/_/g, '').toUpperCase();
+    return 'BINANCE:' + rest;
+  }
+  // Remove common prefixes like B-
+  s = s.toUpperCase();
+  if (s.startsWith('B-')) s = s.slice(2);
+  // remove underscores and .P suffix
+  s = s.replace(/_/g, '');
+  s = s.replace(/\.P$/i, '');
+  return 'BINANCE:' + s;
+}
+
+function loadChart(symbol = 'BINANCE:BTCUSDT') {
+  const el = document.getElementById('tradingview_chart');
   if (!el) return;
-  const s = String(symbol || '').trim();
+  const s = toBinanceTv(symbol);
   if (currentTvSymbol && currentTvSymbol === s) {
     // Same symbol already loaded - do nothing
     return;
   }
   currentTvSymbol = s;
-  el.innerHTML = "";
+  el.innerHTML = '';
   new TradingView.widget({
-    container_id: "tradingview_chart",
+    container_id: 'tradingview_chart',
     autosize: true,
-    symbol: symbol,
-    interval: "15",
+    symbol: s,
+    interval: '15',
     // Use India timezone for display
-    timezone: "Asia/Kolkata",
-    theme: "light",
-    style: "1",
-    locale: "en",
-    toolbar_bg: "#f1f3f6",
+    timezone: 'Asia/Kolkata',
+    theme: 'light',
+    style: '1',
+    locale: 'en',
+    toolbar_bg: '#f1f3f6',
     enable_publishing: false,
     withdateranges: true,
     hide_side_toolbar: false,
@@ -82,17 +104,32 @@ function formatPrice(v) {
   let decimals = 2;
   if (abs < 10) decimals = 6;
   else if (abs < 99) decimals = 4;
-  // Use toLocaleString for thousands separators while fixing decimals
-  try {
-    return n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-  } catch (e) {
-    return n.toFixed(decimals);
-  }
+  // Use fixed decimal formatting without thousands separators
+  return Number(n).toFixed(decimals);
 }
 
 function formatQty(q) {
   if (q === null || q === undefined || q === '' || isNaN(Number(q))) return '-';
-  return Number(q).toFixed(2);
+  return Number(q).toFixed(3);
+}
+
+// Convert a stored symbol or TV symbol to CoinDCX display format B-BASE_QUOTE
+function tvToCoindcxPair(sym) {
+  if (!sym) return '';
+  try {
+    let s = String(sym).trim();
+    if (s.includes(':')) s = s.split(':')[1];
+    s = s.replace(/\./g, '').replace(/\//g, '_');
+    if (s.toUpperCase().endsWith('USDT')) {
+      const base = s.slice(0, -4).toUpperCase();
+      return `B-${base}_USDT`;
+    }
+    if (s.includes('_')) return `B-${s.toUpperCase()}`;
+    // fallback split last 3/4 chars
+    const up = s.toUpperCase();
+    if (up.length > 4 && up.endsWith('USDT')) return `B-${up.slice(0,-4)}_USDT`;
+    return `B-${up.slice(0,-3)}_${up.slice(-3)}`;
+  } catch (e) { return sym; }
 }
 
 // Ensure a small CSS for LTP flash is present on pages that use positions
@@ -431,22 +468,12 @@ async function loadPositions() {
 
     // helper to pick numeric INR PnL value (declare once so both table and card rendering can use it)
     function getPnlInrValue(p) {
-      // prefer explicit numeric INR value from server
-      if (p && p.pnl_open_inr_value !== undefined && p.pnl_open_inr_value !== null && !isNaN(Number(p.pnl_open_inr_value))) {
-        return Number(p.pnl_open_inr_value);
-      }
-      // fallback to numeric pnl_open_inr (legacy) if it's already numeric
-      if (p && p.pnl_open_inr !== undefined && p.pnl_open_inr !== null && !isNaN(Number(p.pnl_open_inr))) {
-        return Number(p.pnl_open_inr);
-      }
-      // fallback to converting pnl in USDT if provided (server may expose pnl_usdt or pnl_open_usdt)
-      if (p && (p.pnl_open_usdt !== undefined && p.pnl_open_usdt !== null && !isNaN(Number(p.pnl_open_usdt))) && window._fx_usdt_inr) {
-        return Number(p.pnl_open_usdt) * Number(window._fx_usdt_inr);
-      }
-      if (p && (p.pnl_usdt !== undefined && p.pnl_usdt !== null && !isNaN(Number(p.pnl_usdt))) && window._fx_usdt_inr) {
-        return Number(p.pnl_usdt) * Number(window._fx_usdt_inr);
-      }
-      // last resort: return 0
+      // Prefer server-provided INR fields. Do NOT convert USD client-side; show 0 when INR not available
+      if (!p) return 0;
+      if (p.pnl_open_inr_value !== undefined && p.pnl_open_inr_value !== null && !isNaN(Number(p.pnl_open_inr_value))) return Number(p.pnl_open_inr_value);
+      if (p.pnl_open_inr !== undefined && p.pnl_open_inr !== null && !isNaN(Number(p.pnl_open_inr))) return Number(p.pnl_open_inr);
+      if (p.unrealized_pnl !== undefined && p.unrealized_pnl !== null && !isNaN(Number(p.unrealized_pnl))) return Number(p.unrealized_pnl);
+      // Do not attempt client-side USD->INR conversion; require server to supply INR values
       return 0;
     }
 
@@ -475,7 +502,7 @@ async function loadPositions() {
           const qty = formatQty(p.qty || 0);
           const strategy = p.strategy || '';
           // Show CoinDCX pair like B-BASE_QUOTE
-          let label = tvToCoindcxPair(p.tv_symbol || p.pair || '');
+        let label = p.pair || (typeof tvToCoindcxPair === 'function' ? tvToCoindcxPair(p.tv_symbol) : p.tv_symbol || '');
 
           // Order id (prefer real order_id, then paper_order_id, then id)
           const ordFull = (p.order_id || p.paper_order_id || p.id || '') + '';
@@ -486,18 +513,18 @@ async function loadPositions() {
           const sideBadgeClass = (sideRaw === 'SELL' || sideRaw === 'SHORT') ? 'badge bg-danger' : 'badge bg-success';
           const sideDisplay = `<span class="${sideBadgeClass}">${sideRaw}</span>`;
 
-      rows += `<tr>
-        <td>${ordDisplay}</td>
+  rows += `<tr>
+    <td>${ordDisplay}</td>
   <td><strong>${tvToCoindcxPair(symbol)}</strong></td>
-        <td>${sideDisplay}</td>
-        <td class="entry-time">${entryAt}</td>
-        <td>${entryPx}</td>
-        <td>${qty}</td>
-        <td class="ltp-cell" data-label="${label}" data-last-price="${ltpVal !== null && ltpVal !== undefined ? formatPrice(ltpVal) : ''}">${ltpVal !== null && ltpVal !== undefined ? formatPrice(ltpVal) : '-'}</td>
-        <td class="running-pnl ${pnlClass}" data-pnl="${runningPnl}">${formatPrice(Number(runningPnl) || 0)}</td>
-        <td>${strategy}</td>
-        <td><button class="btn btn-sm btn-outline-secondary view-btn" data-symbol="${p.tv_symbol||p.pair||''}">View</button></td>
-          </tr>`;
+    <td>${sideDisplay}</td>
+    <td class="entry-time">${entryAt}</td>
+    <td>${entryPx}</td>
+    <td>${qty}</td>
+    <td class="ltp-cell" data-label="${label}" data-last-price="">-</td>
+    <td class="running-pnl ${pnlClass}" data-pnl="${runningPnl}">${runningPnl===null||runningPnl===undefined?'-':('₹'+Number(runningPnl).toFixed(2))}</td>
+    <td>${strategy}</td>
+    <td><button class="btn btn-sm btn-outline-secondary view-btn" data-symbol="${p.tv_symbol||p.pair||''}">View</button></td>
+      </tr>`;
         });
       tbody.innerHTML = rows;
       // attach view handlers
@@ -799,43 +826,170 @@ function setInitialPlayPauseIcons() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  loadChart("BTCUSDT.P");
+  // Defer non-critical initialization to avoid blocking first paint.
+  // Use requestIdleCallback when available, otherwise fallback to a short timeout.
+  const deferInit = (cb) => {
+    if (window.requestIdleCallback) {
+      try { window.requestIdleCallback(cb, {timeout: 500}); return; } catch (e) {}
+    }
+    setTimeout(cb, 200);
+  };
+
+  // Light-weight immediate tasks
   refreshBalance();
   setInterval(refreshBalance, 10000);
 
-  loadInstruments();
-  setupSearch();
-  loadWatchlist();
+  // Defer heavier tasks: chart, instruments, watchlist, positions rendering
+  deferInit(() => {
+    try { loadChart("BTCUSDT.P"); } catch(e){}
+    try { loadInstruments(); } catch(e){}
+    try { setupSearch(); } catch(e){}
+    try { loadWatchlist(); } catch(e){}
 
-  // Use APP_CACHE positions if available, otherwise load once
-  if (window.APP_CACHE) {
-    const pos = window.APP_CACHE.getPositions();
-    if (pos) {
-      // trigger a render by invoking loadPositions which will read from APP_CACHE
+    // Use APP_CACHE positions if available, otherwise load once
+    if (window.APP_CACHE) {
+      const pos = window.APP_CACHE.getPositions();
+      if (pos) {
+        // trigger a render by invoking loadPositions which will read from APP_CACHE
+        loadPositions();
+      }
+      // subscribe to positions updates
+      try { window.APP_CACHE.on('positions', ()=>{ loadPositions(); }); } catch(e){}
+      // subscribe to wallet updates
+      try { window.APP_CACHE.on('wallets', ()=>{ refreshPaperWalletUI(); refreshBalance(); }); } catch(e){}
+      // subscribe to ltp updates: apply prices to DOM to avoid extra polling
+      try {
+        window.APP_CACHE.on('ltp', (map)=>{
+          try{
+            Object.keys(map || {}).forEach(label => {
+              const price = map[label];
+              if (price === null || price === undefined) return;
+              const priceStr = formatPrice(Number(price));
+              document.querySelectorAll('.ltp-cell[data-label="'+label+'"]') .forEach(el=>{ el.textContent = priceStr; });
+              document.querySelectorAll('.ltp-card[data-label="'+label+'"]') .forEach(el=>{ el.textContent = '₹'+priceStr; });
+            });
+          }catch(e){}
+        });
+      } catch(e){}
+    } else {
       loadPositions();
     }
-    // subscribe to positions updates
-    try { window.APP_CACHE.on('positions', ()=>{ loadPositions(); }); } catch(e){}
-    // subscribe to wallet updates
-    try { window.APP_CACHE.on('wallets', ()=>{ refreshPaperWalletUI(); refreshBalance(); }); } catch(e){}
-    // subscribe to ltp updates: apply prices to DOM to avoid extra polling
-    try {
-      window.APP_CACHE.on('ltp', (map)=>{
-        try{
-          Object.keys(map || {}).forEach(label => {
-            const price = map[label];
-            if (price === null || price === undefined) return;
-            const priceStr = formatPrice(Number(price));
-            document.querySelectorAll('.ltp-cell[data-label="'+label+'"]') .forEach(el=>{ el.textContent = priceStr; });
-            document.querySelectorAll('.ltp-card[data-label="'+label+'"]') .forEach(el=>{ el.textContent = '₹'+priceStr; });
-          });
-        }catch(e){}
-      });
-    } catch(e){}
-  } else {
-    loadPositions();
-  }
+  });
   // positions auto-refresh is handled by startPositionsAutoRefresh when the Positions tab is active
+
+  // Fallback LTP batch poller: when APP_CACHE is not present, poll server every 1s
+  // Collect visible labels from the DOM and POST to /ltp/batch to fetch only what we need.
+  if (!window.APP_CACHE) {
+    let _ltpBatchInterval = null;
+    async function fetchLtpBatchOnce() {
+      try {
+        // collect unique labels from visible DOM nodes (.ltp-cell and .ltp-card)
+        const labelsSet = new Set();
+        document.querySelectorAll('.ltp-cell[data-label], .ltp-card[data-label]').forEach(el => {
+          try {
+            const lbl = (el.getAttribute('data-label') || '').trim();
+            if (lbl) labelsSet.add(lbl);
+          } catch(e){}
+        });
+        const labels = Array.from(labelsSet);
+        // debug: show which labels the poller found
+        try { console.debug('[LTP Poller] discovered labels', labels); } catch(e) {}
+
+        // If nothing visible, fall back to snapshot endpoint to avoid empty requests
+        if (!labels.length) {
+          try {
+            const res = await fetch('/ltp_snapshot');
+            if (!res.ok) return;
+            const map = await res.json();
+            if (!map) return;
+            Object.keys(map).forEach(label => updateLtpElements(label, map[label]));
+          } catch(e) { /* ignore */ }
+          return;
+        }
+
+        // POST batch request
+        let ok = false;
+        try {
+          const resp = await fetch('/ltp/batch', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ labels: labels }) });
+          if (resp.ok) {
+            const j = await resp.json();
+            const map = (j && j.ltps) ? j.ltps : {};
+            try { console.debug('[LTP Poller] /ltp/batch response', map); } catch(e) {}
+            Object.keys(map).forEach(k => updateLtpElements(k, map[k]));
+            ok = true;
+          }
+        } catch(e) { ok = false; }
+
+        // If batch failed, try a full snapshot as a fallback
+        if (!ok) {
+          try {
+            const res = await fetch('/ltp_snapshot');
+            if (!res.ok) return;
+            const map = await res.json();
+            if (!map) return;
+            Object.keys(map).forEach(label => updateLtpElements(label, map[label]));
+          } catch(e) { /* ignore */ }
+        }
+      } catch(e) { /* ignore network errors */ }
+    }
+
+    function updateLtpElements(label, price) {
+      try {
+        if (price === null || price === undefined) return;
+        const priceStr = formatPrice(Number(price));
+        // debug: per-label update
+        try { console.debug('[LTP Update] label=', label, 'price=', price); } catch(e) {}
+        document.querySelectorAll('.ltp-cell[data-label="'+label+'"]').forEach(el=>{
+          try {
+            const last = el.getAttribute('data-last-price');
+            el.textContent = priceStr;
+            el.setAttribute('data-last-price', priceStr);
+            if (last && last !== String(priceStr)) {
+              el.classList.add('ltp-flash');
+              setTimeout(()=>el.classList.remove('ltp-flash'), 300);
+            }
+          } catch(e){}
+        });
+        document.querySelectorAll('.ltp-card[data-label="'+label+'"]').forEach(el=>{
+          try {
+            const last = el.getAttribute('data-last-price');
+            el.textContent = '₹'+priceStr;
+            el.setAttribute('data-last-price', priceStr);
+            if (last && last !== String(priceStr)) {
+              el.classList.add('ltp-flash');
+              setTimeout(()=>el.classList.remove('ltp-flash'), 300);
+            }
+          } catch(e){}
+        });
+      } catch(e){}
+    }
+
+    function startLtpBatchPoll() {
+      if (_ltpBatchInterval) return;
+      fetchLtpBatchOnce();
+      _ltpBatchInterval = setInterval(fetchLtpBatchOnce, 1000);
+    }
+    function stopLtpBatchPoll() { if (_ltpBatchInterval) { clearInterval(_ltpBatchInterval); _ltpBatchInterval = null; } }
+
+    if (document.hidden) {
+      document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) startLtpBatchPoll(); else stopLtpBatchPoll(); });
+    } else {
+      startLtpBatchPoll();
+    }
+  }
+
+  // Helper: compute qty from INR margin via server endpoint
+  async function computeQtyFromMargin({ margin_inr, leverage, symbol, price, usd_inr_rate }){
+    try{
+      const body = { margin_inr: margin_inr, leverage: leverage };
+      if (symbol) body.symbol = symbol;
+      if (price) body.price = price;
+      if (usd_inr_rate) body.usd_inr_rate = usd_inr_rate;
+      const resp = await fetch('/compute_qty', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      if (!resp.ok) return null;
+      return await resp.json();
+    }catch(e){ return null; }
+  }
 
   // Ensure wallet panels reflect current account type on load
   const acct = document.getElementById('accountType');
@@ -856,10 +1010,10 @@ document.addEventListener("DOMContentLoaded", () => {
           const realized = document.getElementById('paperRealizedPnL');
           const unreal = document.getElementById('paperUnrealizedPnL');
           const avail = document.getElementById('availableFunds');
-          if (accEl) accEl.innerText = '₹' + (data.balance || 0);
-          if (realized) realized.innerText = '₹' + (data.realized_pnl || 0);
-          if (unreal) unreal.innerText = '₹' + (data.unrealized_pnl || 0);
-          if (avail) avail.innerText = '₹' + (data.available_balance || 0);
+    if (accEl) accEl.innerText = (data.balance !== undefined ? '₹' + formatPrice(data.balance) : '-');
+    if (realized) { realized.innerText = (data.realized_pnl !== undefined ? '₹' + Number(data.realized_pnl).toFixed(2) : '-'); realized.classList.remove('text-success','text-danger'); if(Number(data.realized_pnl) < 0) realized.classList.add('text-danger'); else realized.classList.add('text-success'); }
+    if (unreal) { unreal.innerText = (data.unrealized_pnl !== undefined ? '₹' + Number(data.unrealized_pnl).toFixed(2) : '-'); unreal.classList.remove('text-success','text-danger'); if(Number(data.unrealized_pnl) < 0) unreal.classList.add('text-danger'); else unreal.classList.add('text-success'); }
+    if (avail) avail.innerText = (data.available_balance !== undefined ? '₹' + formatPrice(data.available_balance) : '-');
         }).catch(()=>{});
       } else {
         // Robust fetch: handle 404 or non-JSON responses gracefully

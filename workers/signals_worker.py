@@ -215,6 +215,12 @@ def _run_loop_core(symbol_map, last_map_refresh):
                     sio.emit('join', {'channelName': 'currentPrices@spot@10s'})
                 except Exception:
                     pass
+                # also subscribe to derivatives/futures batched channels so worker gets futures LTP
+                for ch in ('currentPrices@derivatives@10s', 'currentPrices@futures@10s', 'currentPrices@derivatives@1s'):
+                    try:
+                        sio.emit('join', {'channelName': ch})
+                    except Exception:
+                        pass
 
             @sio.on('price-change')
             def on_price_change(msg):
@@ -260,6 +266,32 @@ def _run_loop_core(symbol_map, last_map_refresh):
                         if label.startswith('B-'):
                             label = label[2:].replace('_','')
                         cleaned = label.replace(':','').replace('/','')
+                        targets = symbol_map.get(cleaned)
+                        if not targets:
+                            continue
+                        for us_id, strat_name, tv_sym in targets:
+                            compute_and_store(us_id, tv_sym, strat_name)
+                except Exception:
+                    traceback.print_exc()
+
+            # also accept derivatives/futures batched updates under other channel names
+            @sio.on('currentPrices@derivatives#update')
+            def on_batch_update_derivatives(msg):
+                try:
+                    data = (msg and (msg.get('data') or msg)) or {}
+                    if isinstance(data, str):
+                        try:
+                            data = json.loads(data)
+                        except Exception:
+                            data = {}
+                    prices = data.get('prices') or data.get('pr') or {}
+                    if not prices:
+                        return
+                    for k, v in prices.items():
+                        label = str(k).upper()
+                        if label.startswith('B-'):
+                            label = label[2:].replace('_', '')
+                        cleaned = label.replace(':', '').replace('/', '')
                         targets = symbol_map.get(cleaned)
                         if not targets:
                             continue

@@ -33,7 +33,7 @@ from flask import (
 
 from model import (
     db, User, Credentials, Watchlist, Strategy, PaperWallet, UserStrategySetup,
-    TradeHistory, Role, ModeratorEarnings, UserStrategyConfig, BacktestConfig, BacktestRun,
+    TradeHistory, Role, ModeratorEarnings, UserStrategyConfig, BacktestConfig, BacktestRun,      
     PaperTrade, StrategySignal
 )
 
@@ -50,7 +50,7 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 
-# Jinja filter: show Coindcx pair name for a stored tv symbol like 'BINANCE:ETHUSDT' -> 'B-ETH_USDT'
+# Jinja filter: show Coindcx pair name for a stored tv symbol like 'BINANCE:ETHUSDT' -> 'B-ETH_US\nDT'
 @app.template_filter('coindcx_pair')
 def jinja_coindcx_pair(tv_symbol: str) -> str:
     try:
@@ -401,7 +401,7 @@ def start_signals_poller():
         pass
 
 
-def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[float], strategy_name: Optional[str], trend_confirmed: bool = False):
+def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[float], strategy_name: Optional[str], trend_confirmed: bool = False, entry_reason: Optional[str] = None, exit_reason_hint: Optional[str] = None):
     """Process a BUY/SELL signal for a user strategy in paper mode.
     - Open a new PaperTrade on BUY if no open trade exists for the config
     - Close existing open trade on opposite signal and record pnl
@@ -498,9 +498,12 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                 open_trade.exit_price = exit_px
                 open_trade.exit_time = datetime.utcnow()
                 open_trade.status = 'CLOSED'
-                # record a human-readable exit reason
+                # record a human-readable exit reason (allow test-provided hint)
                 try:
-                    open_trade.exit_reason = f"Closed on BUY signal (trend_confirmed={bool(trend_confirmed)})"
+                    if exit_reason_hint:
+                        open_trade.exit_reason = exit_reason_hint
+                    else:
+                        open_trade.exit_reason = f"Closed on BUY signal (trend_confirmed={bool(trend_confirmed)})"
                 except Exception:
                     pass
                 open_trade.pnl_inr = pnl
@@ -521,6 +524,11 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                             ss.exit_price = exit_px
                             ss.exit_time = datetime.utcnow()
                             ss.status = 'EXITED'
+                            try:
+                                if exit_reason_hint:
+                                    ss.exit_reason = exit_reason_hint
+                            except Exception:
+                                pass
                             try:
                                 if ss.entry_price and float(ss.entry_price) > 0:
                                     if ss.direction and ss.direction.upper() in ('LONG','BUY'):
@@ -551,17 +559,27 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                         pt = PaperTrade(user_id=us.user_id, config_id=us.id, symbol=us.symbol, side='BUY', qty=qty,
                                         entry_price=cur_price or None, entry_time=datetime.utcnow(), status='OPEN', strategy=str(strategy_name or ''),
                                         margin=margin, leverage=leverage, locked_amount=margin)
+                        try:
+                            if entry_reason:
+                                pt.entry_reason = entry_reason
+                        except Exception:
+                            pass
                         pt.paper_order_id = poid
                         db.session.add(pt)
                         try:
                             wallet.available_balance = float(wallet.available_balance or 0.0) - float(margin)
                             # record StrategySignal for open
                             try:
-                                if us and getattr(us, 'strategy_id', None) is not None:
-                                    ss = StrategySignal(strategy_id=us.strategy_id, symbol=us.symbol,
-                                                        direction=('LONG' if pt.side == 'BUY' else 'SHORT'),
-                                                        status='ACTIVE', entry_price=pt.entry_price, entry_time=pt.entry_time)
-                                    db.session.add(ss)
+                                        if us and getattr(us, 'strategy_id', None) is not None:
+                                            ss = StrategySignal(strategy_id=us.strategy_id, symbol=us.symbol,
+                                                                direction=('LONG' if pt.side == 'BUY' else 'SHORT'),
+                                                                status='ACTIVE', entry_price=pt.entry_price, entry_time=pt.entry_time)
+                                            try:
+                                                if entry_reason:
+                                                    ss.entry_reason = entry_reason
+                                            except Exception:
+                                                pass
+                                            db.session.add(ss)
                             except Exception:
                                 pass
                             db.session.commit()
@@ -587,7 +605,10 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                 open_trade.exit_time = datetime.utcnow()
                 open_trade.status = 'CLOSED'
                 try:
-                    open_trade.exit_reason = f"Closed on SELL signal (trend_confirmed={bool(trend_confirmed)})"
+                    if exit_reason_hint:
+                        open_trade.exit_reason = exit_reason_hint
+                    else:
+                        open_trade.exit_reason = f"Closed on SELL signal (trend_confirmed={bool(trend_confirmed)})"
                 except Exception:
                     pass
                 open_trade.pnl_inr = pnl
@@ -614,6 +635,11 @@ def process_paper_signal(us: 'UserStrategySetup', sig: str, cur_price: Optional[
                                         ss.gain_ratio = (float(exit_px) - float(ss.entry_price)) / float(ss.entry_price)
                                     else:
                                         ss.gain_ratio = (float(ss.entry_price) - float(exit_px)) / float(ss.entry_price)
+                            except Exception:
+                                pass
+                            try:
+                                if exit_reason_hint:
+                                    ss.exit_reason = exit_reason_hint
                             except Exception:
                                 pass
                             db.session.commit()
@@ -1568,6 +1594,28 @@ def inject_mcp_cache():
     return dict(mcp_cache=_get_mcp_cache)
 
 
+@app.context_processor
+def inject_app_ltps():
+    """Inject a snapshot of the LTP cache into templates as APP_LTPS (safe for tojson).
+    This mirrors the client-side expectation in templates/base_app.html. If the ltp
+    module is unavailable or snapshot fails, return empty dict to avoid Jinja errors.
+    """
+    try:
+        import ltp as _ltp
+        snap = {}
+        try:
+            snap = _ltp.get_ltp_cache_snapshot() or {}
+        except Exception:
+            # fallback to internal cache if available
+            try:
+                snap = dict(getattr(_ltp, '_LTP_CACHE', {}) or {})
+            except Exception:
+                snap = {}
+        return dict(APP_LTPS=snap)
+    except Exception:
+        return dict(APP_LTPS={})
+
+
 # @app.route("/dashboard")
 # @login_required
 # def dashboard():
@@ -1925,6 +1973,69 @@ def api_strategy_signals():
         return jsonify({'page': page, 'per_page': per_page, 'total_setups': total_setups, 'items': out})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/ltp_ws')
+def ltp_ws():
+    """Return LTP(s) for one or more normalized labels. Accepts 'label' query param
+    (comma-separated) and optional 'wait' param (ignored in tests). For a single
+    label, returns JSON {label: L, ltp: V}; for multiple, returns {'ltps': {L: V}}.
+    """
+    try:
+        labs = (request.args.get('label') or '')
+        if not labs:
+            return jsonify({'ltps': {}})
+        labels = [l.strip() for l in labs.split(',') if l.strip()]
+        import ltp as _ltp
+        snap = {}
+        try:
+            snap = _ltp.get_ltp_cache_snapshot() or {}
+        except Exception:
+            snap = dict(getattr(_ltp, '_LTP_CACHE', {}) or {})
+
+        out_map = {}
+        for lab in labels:
+            key = ('' + lab).upper().replace('_', '').replace('-', '')
+            # Try exact key or variants in snapshot
+            val = None
+            # direct normalized key
+            if key in snap:
+                val = snap.get(key)
+            else:
+                # try B- style. Handle labels that already start with 'B' (e.g. 'BETHUSDT')
+                try:
+                    if key.startswith('B') and len(key) > 4:
+                        core = key[1:]
+                        bbase = core[:-4]
+                        bquote = core[-4:]
+                        bkey = f'B-{bbase}_{bquote}'
+                    elif len(key) > 4:
+                        bbase = key[:-4]
+                        bquote = key[-4:]
+                        bkey = f'B-{bbase}_{bquote}'
+                    else:
+                        bkey = 'B-' + key
+                except Exception:
+                    bkey = 'B-' + key
+                if bkey in snap:
+                    val = snap.get(bkey)
+                else:
+                    # try raw lookup uppercase (original label)
+                    if lab.upper() in snap:
+                        val = snap.get(lab.upper())
+            if isinstance(val, dict) and 'price' in val:
+                out_map[lab.upper()] = float(val.get('price'))
+            elif isinstance(val, (int, float)):
+                out_map[lab.upper()] = float(val)
+            else:
+                out_map[lab.upper()] = None
+
+        if len(labels) == 1:
+            lab = labels[0].upper()
+            return jsonify({'label': lab, 'ltp': out_map.get(lab)})
+        return jsonify({'ltps': out_map})
+    except Exception:
+        return jsonify({'ltps': {}})
 
 
 # ------------------ User Info ------------------

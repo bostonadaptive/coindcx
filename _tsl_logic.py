@@ -159,18 +159,27 @@ def instrument_detail(pair: str, margin_mode: str) -> Dict[str, Any]:
 
 def last_price_usdt(pair: str) -> float:
     try:
-        det = instrument_detail(pair, MARGIN_MODE)
-        for k in ("mark_price", "last_price", "index_price"):
-            if k in det and det[k] not in (None, "", 0, "0"): return float(det[k])
+        # import centralized LTP helper and prefer a fresh (signed/authoritative) price
+        from ltp import last_price_usdt as _ltp_fn
+        return _ltp_fn(pair, prefer_mark_for_valuation=True, force_refresh=True)
     except Exception:
-        pass
-    end_sec = int(time.time()); start_sec = end_sec - 8*60
-    r = session.get(PUBLIC_BASE + "/market_data/candlesticks",
-                    params={"pair": pair, "from": start_sec, "to": end_sec, "resolution":"1", "pcode":"f"},
-                    timeout=30)
-    r.raise_for_status()
-    rows = (r.json() or {}).get("data") or []
-    return float(rows[-1]["close"]) if rows else float("nan")
+        # fallback to local instrument detail -> candles
+        try:
+            det = instrument_detail(pair, MARGIN_MODE)
+            for k in ("mark_price", "last_price", "index_price"):
+                if k in det and det[k] not in (None, "", 0, "0"): return float(det[k])
+        except Exception:
+            pass
+        try:
+            end_sec = int(time.time()); start_sec = end_sec - 8*60
+            r = session.get(PUBLIC_BASE + "/market_data/candlesticks",
+                            params={"pair": pair, "from": start_sec, "to": end_sec, "resolution":"1", "pcode":"f"},
+                            timeout=30)
+            r.raise_for_status()
+            rows = (r.json() or {}).get("data") or []
+            return float(rows[-1]["close"]) if rows else float("nan")
+        except Exception:
+            return float("nan")
 
 def usdt_inr_fx() -> float:
     try:
@@ -659,7 +668,7 @@ def derive_from_trades(all_orders_norm: List[Dict[str, Any]], fx_inr: float) -> 
                 first_t = min(x["t_ms"] for x in q["buys"])
                 if first_t >= cutoff_ms:
                     vwap = sum(x["qty"]*x["price"] for x in q["buys"]) / tot_qty
-                    lev0 = q["buys"][0]["lev"]; mark = last_price_usdt(pair)
+                    lev0 = q["buys"][0]["lev"]; mark = last_price_usdt(pair, prefer_mark_for_valuation=True)
                     pnl_usdt = (mark - vwap) * tot_qty if not math.isnan(mark) else float("nan")
                     open_rows.append({
                         "id": q["buys"][0]["id"], "pair": pair, "side": "long",
@@ -677,7 +686,7 @@ def derive_from_trades(all_orders_norm: List[Dict[str, Any]], fx_inr: float) -> 
                 first_t = min(x["t_ms"] for x in q["sells"])
                 if first_t >= cutoff_ms:
                     vwap = sum(x["qty"]*x["price"] for x in q["sells"]) / tot_qty
-                    lev0 = q["sells"][0]["lev"]; mark = last_price_usdt(pair)
+                    lev0 = q["sells"][0]["lev"]; mark = last_price_usdt(pair, prefer_mark_for_valuation=True)
                     pnl_usdt = (vwap - mark) * tot_qty if not math.isnan(mark) else float("nan")
                     open_rows.append({
                         "id": q["sells"][0]["id"], "pair": pair, "side": "short",
@@ -968,6 +977,15 @@ class TradeExecutor:
 
         # REAL: try user-defined leverage first
         try:
+            # ensure we have a fresh authoritative price right before sizing/placing the real order
+            try:
+                fresh_px = last_price_usdt(self.pair, prefer_mark_for_valuation=True, force_refresh=True)
+                if is_posfinite(fresh_px):
+                    price_usdt = fresh_px
+                    qty = self.compute_qty(price_usdt, fx_inr)
+            except Exception:
+                pass
+
             resp = create_futures_market_order(self.pair, "buy" if side=="long" else "sell", qty, self.leverage)
             self.current_pos = {"side": side, "qty": qty, "entry_px": price_usdt, "opened_ms": _now_ms()}
             print(f"[REAL] OPEN {side.upper()} {qty} {self.pair} @ ~{price_usdt:.2f} (lev {self.leverage}x)")
@@ -1030,6 +1048,14 @@ class TradeExecutor:
 
         # ===== REAL: just place market opposite =====
         try:
+            # refresh price used for logging/valuation when closing for real
+            try:
+                fresh_px = last_price_usdt(self.pair, prefer_mark_for_valuation=True, force_refresh=True)
+                if is_posfinite(fresh_px):
+                    price_usdt = fresh_px
+            except Exception:
+                pass
+
             resp = create_futures_market_order(self.pair, opp, qty, self.leverage)
             self.current_pos = None; self.last_close_ms = _now_ms()
             return True, f"Closed {side.upper()} (real) ~@ {price_usdt:.4f}"
@@ -1431,7 +1457,8 @@ def main():
 
 
             # --- Signals on last completed candle (base TF) ---
-            live_px_selected = last_price_usdt(TRADING_PAIR)
+            # Use mark price for valuation when available
+            live_px_selected = last_price_usdt(TRADING_PAIR, prefer_mark_for_valuation=True)
             last_c = candles[-2] if len(candles) >= 2 else None
 
             normal_sig = strong_sig = None
@@ -1592,7 +1619,7 @@ def main():
             live_px_map: Dict[str, float] = {TRADING_PAIR: live_px_selected}
             for p in unique_external_pairs:
                 if p not in live_px_map:
-                    live_px_map[p] = last_price_usdt(p)
+                    live_px_map[p] = last_price_usdt(p, prefer_mark_for_valuation=True)
 
             def close_external_position(pair: str, side: str, qty: float, price_usdt: float):
                 opp = "sell" if side == "long" else "buy"
@@ -1645,7 +1672,7 @@ def main():
                 if pair:
                     lp = live_px_map.get(pair) if 'live_px_map' in locals() else float('nan')
                     if not is_posfinite(lp):
-                        lp = last_price_usdt(pair)
+                        lp = last_price_usdt(pair, prefer_mark_for_valuation=True)
                         if 'live_px_map' in locals():
                             live_px_map[pair] = lp
                     r["live_px"] = f"{lp:.6f}" if is_posfinite(lp) else "-"

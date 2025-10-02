@@ -10,6 +10,7 @@ from typing import List
 
 from mcp_client import mcp_get, mcp_post
 from model import db, MCPCache
+from global_cache import set as gc_set
 
 _redis_url = os.environ.get('REDIS_URL') or os.environ.get('REDIS_URI')
 _redis = None
@@ -62,12 +63,17 @@ def poll_once():
             continue
         try:
             res = mcp_get(p)
-            key = f'mcp:{p}'
+            key = p
             if res is not None:
-                _save_to_redis(key, res)
-                # try to persist a lightweight DB copy
+                # update global in-memory cache for fast app reads
                 try:
-                    _save_to_db(key, {'ts': int(time.time()), 'payload': res})
+                    gc_set(key, res, ttl=max(60, POLL_INTERVAL*3))
+                except Exception:
+                    pass
+                # also update redis & DB
+                _save_to_redis(f'mcp:{key}', {'ts': int(time.time()), 'payload': res})
+                try:
+                    _save_to_db(f'mcp:{key}', {'ts': int(time.time()), 'payload': res})
                 except Exception:
                     pass
         except Exception:
